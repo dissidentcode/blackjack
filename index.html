@@ -14,11 +14,50 @@
     <div class="wrapper">
         <img class="logo" src="images/jack-logo.webp" alt="jack-image">
         <h1>Blackjack</h1>
-        <p id="message-el">Want to play a hand?</p>
-        <p id="cards-el"></p>
-        <p id="sum-el"></p>
-        <button id="start-game" onclick="startGame()">START GAME</button>
-        <button id="new-card" onclick="drawNewCard()">NEW CARD</button>
+        <p id="message-el">Place your bet.</p>
+
+        <!-- Info bar -->
+        <div class="info-bar">
+            <span>Balance: <strong id="balance-el">$500</strong></span>
+            <span>Bet: <strong id="bet-el">-</strong></span>
+        </div>
+
+        <!-- Dealer area -->
+        <div class="hand-area">
+            <div class="hand-label">Dealer <span id="dealer-score" class="score-badge hidden"></span></div>
+            <div id="dealer-cards" class="card-row"></div>
+        </div>
+
+        <!-- Player area -->
+        <div class="hand-area">
+            <div class="hand-label">You <span id="player-score" class="score-badge hidden"></span></div>
+            <div id="player-cards" class="card-row"></div>
+        </div>
+
+        <!-- Betting controls -->
+        <div id="betting-controls">
+            <div id="chip-row" class="chip-row">
+                <button class="chip" onclick="addBet(10)">$10</button>
+                <button class="chip" onclick="addBet(25)">$25</button>
+                <button class="chip" onclick="addBet(50)">$50</button>
+                <button class="chip" onclick="addBet(100)">$100</button>
+            </div>
+            <div class="bet-actions">
+                <button id="clear-bet-btn" class="action-btn secondary" onclick="clearBet()">Clear</button>
+                <button id="deal-btn" class="action-btn" onclick="placeBet()">Deal</button>
+            </div>
+        </div>
+
+        <!-- Playing controls -->
+        <div id="action-row" class="action-row hidden">
+            <button id="hit-btn" class="action-btn" onclick="hit()">Hit</button>
+            <button id="stand-btn" class="action-btn" onclick="stand()">Stand</button>
+            <button id="double-btn" class="action-btn secondary" onclick="doubleDown()">Double</button>
+        </div>
+
+        <!-- Round over -->
+        <button id="deal-again-btn" class="action-btn deal-again hidden" onclick="newRound()">Deal Again</button>
+
         <script src="script.js"></script>
     </div>
 </body>
