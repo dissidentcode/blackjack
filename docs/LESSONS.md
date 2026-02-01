@@ -9,6 +9,16 @@
 
 ---
 
+### [2026-02-01] Logic: Insurance must handle player-blackjack-plus-dealer-Ace (even money)
+**Problem:** The initial insurance implementation had `if (dealerShowsAce && !playerBJ)` — it skipped insurance entirely when the player had blackjack. This missed the standard casino "even money" rule: when you have BJ and dealer shows Ace, you can take insurance to guarantee 1:1 payout instead of risking a push. Without this, the player has no agency in a common situation.
+**Solution:** Removed the `!playerBJ` guard. Added a separate branch: if player has BJ, show "Even money?" message instead of "Insurance?". The insurance mechanics are identical — half-bet side wager at 2:1 — but the framing communicates the strategic choice. The existing `resolveHand`/`resolveRound` insurance logic handles the math correctly for both cases.
+**Rule:** When adding a feature that interacts with an existing early-exit condition (like blackjack detection), enumerate all combinations: player BJ only, dealer BJ only, both BJ, neither BJ, dealer Ace + player BJ, dealer Ace + no player BJ. Each combination may need distinct behavior.
+
+### [2026-02-01] Architecture: Surrender bypasses resolveRound with self-contained resolution
+**Problem:** Surrender ends the round immediately — the player forfeits half the bet and the hand is over. But `resolveRound()` iterates all hands and compares against the dealer, which is unnecessary for surrender. Routing surrender through `resolveRound()` would require special-casing a "surrendered" hand state.
+**Solution:** `surrender()` does its own resolution inline: returns half the bet to balance, increments stats, sets `gamePhase = 'roundOver'`, calls `saveState()`, and renders. It never calls `resolveRound()`. This is the third place that calls `saveState()` (after `resolveRound()` and zero-balance reset).
+**Rule:** When a new action short-circuits the normal game flow (surrender, insurance timeout, etc.), it's cleaner to self-resolve than to shoehorn it through `resolveRound()`. But document every new `saveState()` call site — the "save only after resolution" rule now has three locations.
+
 ### [2026-02-01] Bug: Split auto-advance on 21 was missing
 **Problem:** After splitting, `advanceHand()` moved `activeHandIndex` to the next hand and called `renderGame()`, but didn't check if the new hand already totaled 21. The player had to manually stand on an unplayable 21. Single-hand `hit()` already auto-advanced on 21, so this was an inconsistency.
 **Solution:** Added a check in `advanceHand()` after incrementing `activeHandIndex`: if the new hand's total is 21, recursively call `advanceHand()` again. This mirrors the auto-stand behavior and handles the edge case where both split hands get 21.

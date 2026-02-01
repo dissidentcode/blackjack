@@ -10,6 +10,12 @@
 
 ---
 
+### [2026-02-01] Decision: Insurance as a new game phase with extracted blackjack check
+**Context:** Insurance must be offered after dealing but before checking for blackjack — because the insurance decision depends on not yet knowing whether the dealer has BJ. The existing `dealInitialCards()` checked for blackjack and immediately resolved. Insurance needed to insert a decision point between dealing and BJ resolution.
+**Choice:** New `'insurance'` game phase. Extracted `checkBlackjacksAndContinue()` from the bottom of `dealInitialCards()` so it can be called either immediately (no insurance scenario) or after the insurance decision. Insurance controls (Insurance / No Thanks buttons) shown only during this phase. `takeInsurance()` deducts the side bet and calls `checkBlackjacksAndContinue()`. Insurance payout resolved at the end of `resolveRound()` after all hand resolutions.
+**Alternatives considered:** (1) Boolean flag `insuranceOffered` without a new phase — rejected because the UI needs a distinct state where only insurance buttons are visible and all play actions are blocked. (2) Resolve insurance inline in `dealInitialCards()` with a confirm() dialog — rejected because blocking dialogs break the async flow and feel terrible. (3) Insurance as part of the betting phase — rejected because cards must already be dealt for the player to see the dealer's upcard.
+**Outcome:** Clean phase insertion. The `checkBlackjacksAndContinue()` extraction is reusable — any future pre-play decision point (e.g., early surrender variant) can hook in the same way. Insurance payout in `resolveRound()` is additive — it doesn't interfere with per-hand resolution.
+
 ### [2026-02-01] Decision: Multi-hand data model for split pairs
 **Context:** Adding split pairs required the game to track multiple player hands simultaneously. The existing code used a single `playerHand` array and `currentBet` number. Every function — hit, stand, double, render, resolve — referenced these directly.
 **Choice:** Three new state variables: `playerHands` (array of hand arrays), `activeHandIndex` (which hand the player is currently playing), `handBets` (per-hand bet amounts). A new `advanceHand()` function handles transitioning between hands or to dealer turn. `resolveHand()` was extracted from `resolveRound()` to resolve each hand independently. Single-hand play uses `playerHands[0]` transparently — no special-casing needed outside of rendering and resolution.
