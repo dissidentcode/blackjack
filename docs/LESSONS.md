@@ -9,6 +9,11 @@
 
 ---
 
+### [2026-02-01] UI: Review catches display-layer bugs that code tracing misses
+**Problem:** Three UX issues shipped in the Tier 3 PR that passed code-level review (no logic bugs, correct balance math, proper phase guards) but were caught as display inconsistencies: (1) no message when insurance is silently skipped due to insufficient funds, (2) the bet display included the `insuranceBet` amount after the insurance phase ended (stale state in the display), (3) the insurance button said "Insurance" even during the even-money variant where the message said "Even money?".
+**Solution:** (1) Added `messageEl.textContent = "Can't afford insurance."` in the fall-through path. (2) Changed bet display to only include `insuranceBet` during the `'insurance'` phase: `mainBet + (gamePhase === 'insurance' ? insuranceBet : 0)`. (3) Added `id="insurance-btn"` to the button and set `insuranceBtn.textContent` dynamically based on `playerBJ` when entering the insurance phase.
+**Rule:** After verifying game logic and balance math, do a separate pass for display consistency: do all buttons, messages, and labels that describe the same action use matching terminology? Does the displayed bet/balance reflect only what's relevant to the current phase? Silent skips of optional features (insurance, split, etc.) should show a brief explanation.
+
 ### [2026-02-01] Logic: Insurance must handle player-blackjack-plus-dealer-Ace (even money)
 **Problem:** The initial insurance implementation had `if (dealerShowsAce && !playerBJ)` — it skipped insurance entirely when the player had blackjack. This missed the standard casino "even money" rule: when you have BJ and dealer shows Ace, you can take insurance to guarantee 1:1 payout instead of risking a push. Without this, the player has no agency in a common situation.
 **Solution:** Removed the `!playerBJ` guard. Added a separate branch: if player has BJ, show "Even money?" message instead of "Insurance?". The insurance mechanics are identical — half-bet side wager at 2:1 — but the framing communicates the strategic choice. The existing `resolveHand`/`resolveRound` insurance logic handles the math correctly for both cases.
