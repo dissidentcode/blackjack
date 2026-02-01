@@ -738,11 +738,26 @@ function renderBetStack() {
     if (amount === 0) return;
 
     const denoms = [100, 50, 25, 10];
+    const smallerDenoms = denoms.map((_, i) => denoms.slice(i + 1));
     let remaining = amount;
     let chipIndex = 0;
 
-    for (const denom of denoms) {
-        const count = Math.floor(remaining / denom);
+    function canRepresent(amt, denomList) {
+        if (amt === 0) return true;
+        if (denomList.length === 0) return false;
+        const [first, ...rest] = denomList;
+        for (let c = Math.floor(amt / first); c >= 0; c--) {
+            if (canRepresent(amt - c * first, rest)) return true;
+        }
+        return false;
+    }
+
+    for (let d = 0; d < denoms.length; d++) {
+        const denom = denoms[d];
+        let count = Math.floor(remaining / denom);
+        if (count === 0) continue;
+        // Reduce count until remainder is representable by smaller denoms
+        while (count > 0 && !canRepresent(remaining - count * denom, smallerDenoms[d])) count--;
         if (count === 0) continue;
         remaining -= count * denom;
 
