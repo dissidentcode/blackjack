@@ -13,31 +13,57 @@ A vanilla HTML/CSS/JavaScript blackjack game. No frameworks, no build tools.
 
 ```
 blackjack/
-├── index.html          # Game page
-├── style.css           # All styles
-├── script.js           # Game engine + render logic
-├── images/             # Logo, background
-├── docs/
-│   ├── LESSONS.md      # Compounded learnings
-│   └── ARCHITECTURE.md # Technical decisions
-└── CLAUDE.md           # This file
+├── index.html              # Game page
+├── style.css               # All styles
+├── script.js               # Game engine + render logic
+├── images/                 # Logo, background
+├── CLAUDE.md               # This file — project context
+├── .claude/
+│   └── commands/
+│       ├── plan.md         # /plan — planning agent
+│       ├── work.md         # /work — implementation agent
+│       ├── review.md       # /review — review agent
+│       ├── test.md         # /test — testing agent
+│       └── compound.md     # /compound — learning agent
+└── docs/
+    ├── LESSONS.md          # Compounded learnings (problems & solutions)
+    └── ARCHITECTURE.md     # Technical decisions & patterns
 ```
 
 ## Development Workflow
 
-1. `/plan` — Analyze request, produce phased plan with task tracking
-2. `/work` — Execute current plan/phase, mark tasks as you go
-3. `/review` — Check recent changes for bugs, style, edge cases
-4. `/test` — Verify game logic by reading code paths, checking for errors
-5. `/compound` — Update LESSONS.md, ARCHITECTURE.md, CLAUDE.md with learnings
+Every change follows this cycle. Each stage has a dedicated slash command that triggers a specialized agent role.
+
+### `/plan` — Planning Agent
+Analyzes the request, reads all project context (CLAUDE.md, LESSONS.md, ARCHITECTURE.md), explores the codebase, and produces a phased plan with task tracking. Does NOT implement — presents the plan for approval first.
+
+### `/work` — Implementation Agent
+Picks up the next task from the plan, marks it in-progress, reads all files before modifying them, implements the changes, verifies DOM/CSS/JS alignment, and marks the task complete. Stays focused on one phase at a time.
+
+### `/review` — Review Agent
+Reads project rules and LESSONS.md, gathers all recent changes (git diff), and reviews against a structured checklist: logic bugs, state corruption, DOM mismatches, balance math, lessons violations, edge cases. Reports findings by severity (critical/warning/suggestion).
+
+### `/test` — Testing Agent
+Reads all three source files and systematically traces through 22 test scenarios covering: initial state, betting, dealing, hit/stand/double, all payout outcomes, ace handling, and edge cases. Reports a PASS/FAIL table with line-number references for any failures.
+
+### `/compound` — Learning Agent
+The most important step. Gathers everything that happened (git log, diffs, tasks, conversation), identifies problems/solutions, technical decisions, and new rules, then permanently encodes them into docs/LESSONS.md, docs/ARCHITECTURE.md, and CLAUDE.md. Without this step, every session starts from zero.
+
+### The Philosophy
+**plan → work → review → test → compound**
+
+The cycle ensures: nothing is built without a plan, nothing ships without review, nothing is assumed correct without testing, and nothing is learned without compounding. The docs/ directory is the project's memory — it accumulates knowledge across sessions so the same mistakes aren't repeated and the same decisions aren't re-debated.
 
 ## Critical Rules
 
 - **No frameworks** — vanilla HTML/CSS/JS only
 - **No build tools** — files served directly
-- **Three files** — index.html, style.css, script.js (plus assets)
+- **Three source files** — index.html, style.css, script.js (plus assets)
 - **Gold/green theme** — goldenrod accents, dark green text, table background
 - **Font** — Playfair Display (Google Fonts)
+- **Read before writing** — always read a file before modifying it
+- **Guard state mutations** — every action function checks gamePhase before mutating
+- **Balance deducted at bet time** — initial bet in placeBet(), double-down addition in doubleDown(), nowhere else
 
 ## Game Rules
 
@@ -45,8 +71,9 @@ blackjack/
 - Blackjack pays 3:2
 - Regular win pays 1:1
 - Push returns the bet
-- Double down: one additional card, bet doubled
-- Reshuffle when deck runs low
+- Double down: one additional card, bet doubled, only on first two cards
+- Reshuffle when deck drops below 15 cards
+- Zero balance resets to $500
 
 ## Deeper Context
 
