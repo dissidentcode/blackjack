@@ -21,12 +21,12 @@ Prioritized improvements organized by value and effort. Use `/work` to pick up i
 
 ---
 
-## Tier 3: Core Blackjack Features (High Value)
+## Tier 3: Core Blackjack Features — COMPLETED
 
 - [x] **Split pairs** — When dealt two cards of the same rank, split into two independent hands. Each gets its own bet and plays separately. Biggest missing feature. Requires hand-array refactor.
-- [ ] **Insurance** — When dealer shows an Ace, offer insurance (side bet at 2:1) before checking for dealer blackjack. Standard casino rule.
-- [ ] **Surrender** — Option to forfeit half the bet and fold before playing. Late surrender (after dealer checks for blackjack).
-- [ ] **Multi-deck shoe** — Support configurable 1/2/4/6/8 deck shoes instead of single deck.
+- [x] **Insurance** — When dealer shows an Ace, offer insurance (side bet at 2:1) before checking for dealer blackjack. Even money when player has BJ. Standard casino rule.
+- [x] **Surrender** — Option to forfeit half the bet and fold before playing. Late surrender (after dealer checks for blackjack).
+- [x] **Multi-deck shoe** — 6-deck shoe (312 cards), reshuffle threshold scales proportionally.
 
 ## Tier 4: Player Experience (Medium-High Value)
 
