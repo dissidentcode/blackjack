@@ -9,6 +9,16 @@
 
 ---
 
+### [2026-02-01] Bug: Split auto-advance on 21 was missing
+**Problem:** After splitting, `advanceHand()` moved `activeHandIndex` to the next hand and called `renderGame()`, but didn't check if the new hand already totaled 21. The player had to manually stand on an unplayable 21. Single-hand `hit()` already auto-advanced on 21, so this was an inconsistency.
+**Solution:** Added a check in `advanceHand()` after incrementing `activeHandIndex`: if the new hand's total is 21, recursively call `advanceHand()` again. This mirrors the auto-stand behavior and handles the edge case where both split hands get 21.
+**Rule:** When adding multi-path flow control (like `advanceHand()`), check entry conditions on the new path — don't assume the player always needs to act. Any auto-resolution logic (bust, 21) must apply at every hand transition, not just on hit.
+
+### [2026-02-01] Architecture: The `wasSplit` flag serves double duty
+**Problem:** Extracting `resolveHand()` from `resolveRound()` to support per-hand resolution introduced two needs: (1) suppress 3:2 blackjack payout after split (casino rule), and (2) use shorter message format for split results (space-constrained when joined with `|`). Initially, messages were shortened for all cases, which regressed single-hand UX.
+**Solution:** The `wasSplit` boolean parameter controls both behaviors — it gates `isBlackjack()` recognition AND selects between long/short message format via ternary expressions. Single-hand games get the original verbose messages; split games get compact ones.
+**Rule:** When a function needs to behave differently in two contexts, prefer a single descriptive flag parameter over separate code paths. But always check that the non-flagged path preserves existing behavior — regressions in the common case are worse than missing edge case handling.
+
 ### [2026-02-01] Bug: Dealer blackjack was not checked at deal time
 **Problem:** The original `dealInitialCards()` only checked `isBlackjack(playerHand)`. If the dealer had a natural blackjack but the player didn't, the player entered the 'playing' phase and could hit/stand/double against an unbeatable hand. This is wrong — casino rules resolve dealer naturals immediately.
 **Solution:** Changed the check to `if (isBlackjack(playerHand) || isBlackjack(dealerHand))` so both naturals trigger immediate resolution via `revealAndResolve()`. Added a dedicated `dealerBJ` branch in `resolveRound()` that fires before the bust/comparison checks.

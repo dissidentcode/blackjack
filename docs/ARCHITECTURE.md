@@ -10,6 +10,12 @@
 
 ---
 
+### [2026-02-01] Decision: Multi-hand data model for split pairs
+**Context:** Adding split pairs required the game to track multiple player hands simultaneously. The existing code used a single `playerHand` array and `currentBet` number. Every function — hit, stand, double, render, resolve — referenced these directly.
+**Choice:** Three new state variables: `playerHands` (array of hand arrays), `activeHandIndex` (which hand the player is currently playing), `handBets` (per-hand bet amounts). A new `advanceHand()` function handles transitioning between hands or to dealer turn. `resolveHand()` was extracted from `resolveRound()` to resolve each hand independently. Single-hand play uses `playerHands[0]` transparently — no special-casing needed outside of rendering and resolution.
+**Alternatives considered:** (1) Separate `playerHand1`/`playerHand2` variables — rejected because it doesn't generalize and would require duplicating logic. (2) Hand objects with embedded bets `{cards: [], bet: 50}` — considered but rejected because arrays are simpler and `handBets[i]` parallel array is sufficient for max 2 hands. (3) Re-splitting (multiple splits) — deferred; current model supports it structurally but guards limit to one split for simplicity.
+**Outcome:** Clean refactor. All 22 existing test scenarios pass unchanged. Split adds 7 new scenarios, all passing. The `advanceHand()` abstraction handles both single and multi-hand flow without branching in the action functions — `hit()`, `stand()`, and `doubleDown()` all call `advanceHand()` and it does the right thing regardless of hand count.
+
 ### [2026-02-01] Decision: localStorage persistence model
 **Context:** Players lose their balance and progress on page refresh. Need persistence without a backend.
 **Choice:** Three localStorage keys: `blackjack_balance` (int), `blackjack_stats` (JSON object), `blackjack_lastBet` (int). Load functions run at variable initialization time (before DOM refs). Save happens in `resolveRound()` and on zero-balance reset in `newRound()`. Stats object tracks: handsPlayed, wins, losses, pushes, blackjacks, biggestWin.

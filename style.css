@@ -305,6 +305,41 @@ p {
     font-weight: 700;
 }
 
+/* Split hands */
+.split-hand {
+    display: inline-block;
+    vertical-align: top;
+    margin: 0 0.8rem;
+    padding: 0.5rem;
+    border-radius: 0.6em;
+    border: 2px solid transparent;
+}
+
+.split-hand.active-hand {
+    border-color: goldenrod;
+    background: rgba(218, 165, 32, 0.1);
+}
+
+.split-hand-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.split-hand .card-row {
+    min-height: 80px;
+}
+
+.split-hand .score-badge {
+    margin-left: 0.3em;
+}
+
+.score-badge.busted {
+    color: #ff6b6b;
+}
+
 /* Utility */
 .hidden {
     display: none !important;

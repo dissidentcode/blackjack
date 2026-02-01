@@ -63,7 +63,7 @@ The cycle ensures: nothing is built without a plan, nothing ships without review
 - **Font** — Playfair Display (Google Fonts)
 - **Read before writing** — always read a file before modifying it
 - **Guard state mutations** — every action function checks gamePhase before mutating
-- **Balance deducted at bet time** — initial bet in placeBet(), double-down addition in doubleDown(), nowhere else
+- **Balance deducted at bet time** — initial bet in placeBet(), double-down addition in doubleDown(), split second bet in split(), nowhere else
 - **Dealer blackjack checked at deal time** — dealInitialCards() checks both player and dealer for naturals before entering 'playing' phase
 - **saveState() after resolution only** — called in resolveRound() and zero-balance reset, never mid-round
 - **Input handlers route through action functions** — keyboard shortcuts call hit(), stand(), etc. directly — never duplicate game logic in handlers
@@ -76,15 +76,17 @@ The cycle ensures: nothing is built without a plan, nothing ships without review
 - Regular win pays 1:1
 - Push returns the bet
 - Double down: one additional card, bet doubled, only on first two cards
+- Split pairs: when dealt two cards of the same rank, split into two independent hands. One split allowed per round. 21 after split pays 1:1 (not 3:2). Each hand resolved independently against dealer.
 - Reshuffle when deck drops below 15 cards
 - Zero balance resets to $500
 
 ## Features
 
 - **Rebet** — "Rebet" button during betting sets currentBet to lastBet (replaces, doesn't add). Stored in `lastBet` variable and persisted to localStorage. Only shown when lastBet > 0 and lastBet <= balance.
-- **Keyboard shortcuts** — Betting: 1/2/3/4 for chips, Enter=deal, C/Escape=clear, R=rebet. Playing: H=hit, S=stand, D=double. Round over: Enter=deal again.
+- **Keyboard shortcuts** — Betting: 1/2/3/4 for chips, Enter=deal, C/Escape=clear, R=rebet. Playing: H=hit, S=stand, D=double, P=split. Round over: Enter=deal again.
 - **Persistence** — Balance, stats, and lastBet saved to localStorage via `saveState()`. Loaded on init via `loadBalance()`, `loadStats()`, `loadLastBet()`.
 - **Statistics** — Tracks handsPlayed, wins, losses, pushes, blackjacks, biggestWin, win rate. Togglable panel with Stats/Reset buttons.
+- **Split pairs** — Split button appears when dealt matching-rank cards with sufficient balance. Splits into two hands played left-to-right. Active hand highlighted with gold border. Each hand has its own bet display and score badge. Auto-advances past hands with 21. One split per round. Uses `playerHands[]` array, `activeHandIndex`, and `handBets[]` for per-hand tracking.
 
 ## Deeper Context
 

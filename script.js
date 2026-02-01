@@ -19,7 +19,9 @@ const STORAGE_KEY_LAST_BET = 'blackjack_lastBet';
 
 // --- Game State ---
 let deck = [];
-let playerHand = [];
+let playerHands = [[]];  // array of hands (for split support)
+let activeHandIndex = 0; // which hand is currently being played
+let handBets = [];       // bet amount per hand
 let dealerHand = [];
 let balance = loadBalance();
 let currentBet = 0;
@@ -72,6 +74,7 @@ const doubleBtn = document.getElementById('double-btn');
 const clearBetBtn = document.getElementById('clear-bet-btn');
 const dealBtn = document.getElementById('deal-btn');
 const rebetBtn = document.getElementById('rebet-btn');
+const splitBtn = document.getElementById('split-btn');
 const bettingControls = document.getElementById('betting-controls');
 const statsToggleBtn = document.getElementById('stats-toggle-btn');
 const statsPanel = document.getElementById('stats-panel');
@@ -152,10 +155,12 @@ function placeBet() {
 }
 
 function dealInitialCards() {
-    playerHand = [dealCard(), dealCard()];
+    playerHands = [[dealCard(), dealCard()]];
+    activeHandIndex = 0;
+    handBets = [currentBet];
     dealerHand = [dealCard(), dealCard()];
 
-    if (isBlackjack(playerHand) || isBlackjack(dealerHand)) {
+    if (isBlackjack(playerHands[0]) || isBlackjack(dealerHand)) {
         gamePhase = 'roundOver';
         revealAndResolve();
         return;
@@ -167,46 +172,86 @@ function dealInitialCards() {
 
 function hit() {
     if (gamePhase !== 'playing') return;
-    playerHand.push(dealCard());
-    const { total } = calculateHandValue(playerHand);
-    if (total > 21) {
-        gamePhase = 'roundOver';
-        resolveRound();
-        return;
-    }
-    if (total === 21) {
-        stand();
+    const hand = playerHands[activeHandIndex];
+    hand.push(dealCard());
+    const { total } = calculateHandValue(hand);
+    if (total > 21 || total === 21) {
+        advanceHand();
         return;
     }
     renderGame();
+}
+
+function advanceHand() {
+    // Move to next hand or to dealer turn
+    if (activeHandIndex < playerHands.length - 1) {
+        activeHandIndex++;
+        // Auto-advance if next hand already has 21
+        const { total } = calculateHandValue(playerHands[activeHandIndex]);
+        if (total === 21) {
+            advanceHand();
+            return;
+        }
+        renderGame();
+    } else {
+        // All hands done — check if all busted
+        const allBusted = playerHands.every(h => calculateHandValue(h).total > 21);
+        if (allBusted) {
+            gamePhase = 'roundOver';
+            resolveRound();
+        } else {
+            gamePhase = 'dealerTurn';
+            renderGame();
+            dealerPlay();
+        }
+    }
 }
 
 function stand() {
     if (gamePhase !== 'playing') return;
-    gamePhase = 'dealerTurn';
-    renderGame();
-    dealerPlay();
+    advanceHand();
 }
 
 function doubleDown() {
     if (gamePhase !== 'playing') return;
-    if (playerHand.length !== 2) return;
-    if (currentBet > balance) return;
+    const hand = playerHands[activeHandIndex];
+    if (hand.length !== 2) return;
+    const bet = handBets[activeHandIndex];
+    if (bet > balance) return;
 
-    balance -= currentBet;
-    currentBet *= 2;
-    playerHand.push(dealCard());
+    balance -= bet;
+    handBets[activeHandIndex] = bet * 2;
+    hand.push(dealCard());
 
-    const { total } = calculateHandValue(playerHand);
-    if (total > 21) {
-        gamePhase = 'roundOver';
-        resolveRound();
+    advanceHand();
+}
+
+function split() {
+    if (gamePhase !== 'playing') return;
+    if (playerHands.length > 1) return; // only one split allowed
+    const hand = playerHands[0];
+    if (hand.length !== 2) return;
+    if (hand[0].rank !== hand[1].rank) return;
+    if (handBets[0] > balance) return;
+
+    // Deduct second bet
+    balance -= handBets[0];
+
+    // Split into two hands
+    const card1 = hand[0];
+    const card2 = hand[1];
+    playerHands = [[card1, dealCard()], [card2, dealCard()]];
+    handBets = [handBets[0], handBets[0]];
+    activeHandIndex = 0;
+
+    // If active hand hits 21, auto-advance
+    const { total } = calculateHandValue(playerHands[0]);
+    if (total === 21) {
+        advanceHand();
         return;
     }
 
-    gamePhase = 'dealerTurn';
     renderGame();
-    dealerPlay();
 }
 
 // --- Dealer Logic ---
@@ -238,59 +283,74 @@ function revealAndResolve() {
     resolveRound();
 }
 
-function resolveRound() {
-    const player = calculateHandValue(playerHand);
-    const dealer = calculateHandValue(dealerHand);
-    const playerBJ = isBlackjack(playerHand);
-    const dealerBJ = isBlackjack(dealerHand);
+function resolveHand(hand, bet, dealer, dealerBJ, wasSplit) {
+    const player = calculateHandValue(hand);
+    // 21 after split is not a natural blackjack
+    const playerBJ = !wasSplit && isBlackjack(hand);
     let msg = '';
-    let net = 0; // net gain for this round (negative = loss)
+    let net = 0;
 
     if (playerBJ && dealerBJ) {
-        msg = 'Both have Blackjack — Push!';
-        balance += currentBet;
+        msg = wasSplit ? 'Push!' : 'Both have Blackjack — Push!';
+        balance += bet;
         stats.pushes++;
         stats.blackjacks++;
     } else if (playerBJ) {
-        const payout = Math.floor(currentBet * 1.5);
-        msg = 'Blackjack! You win $' + payout + '!';
-        balance += currentBet + payout;
+        const payout = Math.floor(bet * 1.5);
+        msg = wasSplit ? 'BJ! +$' + payout : 'Blackjack! You win $' + payout + '!';
+        balance += bet + payout;
         net = payout;
         stats.wins++;
         stats.blackjacks++;
     } else if (dealerBJ) {
-        msg = 'Dealer has Blackjack. You lose $' + currentBet + '.';
-        net = -currentBet;
+        msg = wasSplit ? 'Dealer BJ. -$' + bet : 'Dealer has Blackjack. You lose $' + bet + '.';
+        net = -bet;
         stats.losses++;
     } else if (player.total > 21) {
-        msg = 'Bust! You lose $' + currentBet + '.';
-        net = -currentBet;
+        msg = wasSplit ? 'Bust! -$' + bet : 'Bust! You lose $' + bet + '.';
+        net = -bet;
         stats.losses++;
     } else if (dealer.total > 21) {
-        msg = 'Dealer busts! You win $' + currentBet + '!';
-        balance += currentBet * 2;
-        net = currentBet;
+        msg = wasSplit ? 'Dealer busts! +$' + bet : 'Dealer busts! You win $' + bet + '!';
+        balance += bet * 2;
+        net = bet;
         stats.wins++;
     } else if (player.total > dealer.total) {
-        msg = 'You win $' + currentBet + '!';
-        balance += currentBet * 2;
-        net = currentBet;
+        msg = wasSplit ? 'Win! +$' + bet : 'You win $' + bet + '!';
+        balance += bet * 2;
+        net = bet;
         stats.wins++;
     } else if (player.total < dealer.total) {
-        msg = 'Dealer wins. You lose $' + currentBet + '.';
-        net = -currentBet;
+        msg = wasSplit ? 'Lose. -$' + bet : 'Dealer wins. You lose $' + bet + '.';
+        net = -bet;
         stats.losses++;
     } else {
-        msg = 'Push! Bet returned.';
-        balance += currentBet;
+        msg = wasSplit ? 'Push.' : 'Push! Bet returned.';
+        balance += bet;
         stats.pushes++;
     }
 
     stats.handsPlayed++;
-    if (net > stats.biggestWin) stats.biggestWin = net;
+    return { msg, net };
+}
+
+function resolveRound() {
+    const dealer = calculateHandValue(dealerHand);
+    const dealerBJ = isBlackjack(dealerHand);
+    const isSplit = playerHands.length > 1;
+    let totalNet = 0;
+    const messages = [];
+
+    for (let i = 0; i < playerHands.length; i++) {
+        const { msg, net } = resolveHand(playerHands[i], handBets[i], dealer, dealerBJ, isSplit);
+        totalNet += net;
+        messages.push(isSplit ? 'Hand ' + (i + 1) + ': ' + msg : msg);
+    }
+
+    if (totalNet > stats.biggestWin) stats.biggestWin = totalNet;
 
     gamePhase = 'roundOver';
-    messageEl.textContent = msg;
+    messageEl.textContent = messages.join(' | ');
     saveState();
     renderGame();
 }
@@ -303,7 +363,9 @@ function newRound() {
     } else {
         messageEl.textContent = 'Place your bet.';
     }
-    playerHand = [];
+    playerHands = [[]];
+    activeHandIndex = 0;
+    handBets = [];
     dealerHand = [];
     currentBet = 0;
     gamePhase = 'betting';
@@ -335,7 +397,8 @@ function createCardElement(card, faceDown) {
 function renderGame() {
     // Balance and bet
     balanceEl.textContent = '$' + balance;
-    betEl.textContent = currentBet > 0 ? '$' + currentBet : '-';
+    const totalBet = handBets.length > 0 ? handBets.reduce((a, b) => a + b, 0) : currentBet;
+    betEl.textContent = totalBet > 0 ? '$' + totalBet : '-';
 
     // Dealer cards
     dealerCardsEl.innerHTML = '';
@@ -358,19 +421,64 @@ function renderGame() {
         dealerScoreEl.classList.add('hidden');
     }
 
-    // Player cards
-    playerCardsEl.innerHTML = '';
-    for (const card of playerHand) {
-        playerCardsEl.appendChild(createCardElement(card, false));
-    }
+    // Player hands
+    const playerArea = playerCardsEl.parentElement;
+    // Remove any extra hand containers from previous renders
+    playerArea.querySelectorAll('.split-hand').forEach(el => el.remove());
 
-    // Player score
-    if (playerHand.length > 0) {
-        const pv = calculateHandValue(playerHand);
-        playerScoreEl.textContent = pv.total;
-        playerScoreEl.classList.remove('hidden');
-    } else {
+    const isSplit = playerHands.length > 1;
+
+    if (isSplit) {
+        // Hide the default card row and score — we'll render per-hand
+        playerCardsEl.innerHTML = '';
         playerScoreEl.classList.add('hidden');
+
+        for (let h = 0; h < playerHands.length; h++) {
+            const hand = playerHands[h];
+            const container = document.createElement('div');
+            container.classList.add('split-hand');
+            if (gamePhase === 'playing' && h === activeHandIndex) {
+                container.classList.add('active-hand');
+            }
+
+            const label = document.createElement('div');
+            label.classList.add('split-hand-label');
+            label.textContent = 'Hand ' + (h + 1) + ' ($' + handBets[h] + ')';
+            container.appendChild(label);
+
+            const cardRow = document.createElement('div');
+            cardRow.classList.add('card-row');
+            for (const card of hand) {
+                cardRow.appendChild(createCardElement(card, false));
+            }
+            container.appendChild(cardRow);
+
+            if (hand.length > 0) {
+                const score = document.createElement('span');
+                score.classList.add('score-badge');
+                const hv = calculateHandValue(hand);
+                score.textContent = hv.total;
+                if (hv.total > 21) score.classList.add('busted');
+                label.appendChild(score);
+            }
+
+            playerArea.appendChild(container);
+        }
+    } else {
+        // Single hand — use existing elements
+        playerCardsEl.innerHTML = '';
+        const hand = playerHands[0];
+        for (const card of hand) {
+            playerCardsEl.appendChild(createCardElement(card, false));
+        }
+
+        if (hand.length > 0) {
+            const pv = calculateHandValue(hand);
+            playerScoreEl.textContent = pv.total;
+            playerScoreEl.classList.remove('hidden');
+        } else {
+            playerScoreEl.classList.add('hidden');
+        }
     }
 
     // Controls visibility
@@ -383,10 +491,19 @@ function renderGame() {
     actionRow.classList.toggle('hidden', !isPlaying);
     dealAgainBtn.classList.toggle('hidden', !isOver);
 
-    // Double down availability
+    // Double down and split availability
     if (isPlaying) {
-        const canDouble = playerHand.length === 2 && currentBet <= balance;
+        const hand = playerHands[activeHandIndex];
+        const bet = handBets[activeHandIndex];
+        const canDouble = hand.length === 2 && bet <= balance;
         doubleBtn.disabled = !canDouble;
+
+        const canSplit = !isSplit && hand.length === 2 &&
+            hand[0].rank === hand[1].rank && handBets[0] <= balance;
+        splitBtn.disabled = !canSplit;
+        splitBtn.classList.toggle('hidden', !canSplit);
+    } else {
+        splitBtn.classList.add('hidden');
     }
 
     renderStats();
@@ -450,6 +567,7 @@ document.addEventListener('keydown', function(e) {
         if (key === 'h') hit();
         else if (key === 's') stand();
         else if (key === 'd') doubleDown();
+        else if (key === 'p') split();
     } else if (gamePhase === 'roundOver') {
         if (key === 'enter') newRound();
     }
