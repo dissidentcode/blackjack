@@ -9,6 +9,21 @@
 
 ---
 
+### [2026-02-01] Bug: Dealer blackjack was not checked at deal time
+**Problem:** The original `dealInitialCards()` only checked `isBlackjack(playerHand)`. If the dealer had a natural blackjack but the player didn't, the player entered the 'playing' phase and could hit/stand/double against an unbeatable hand. This is wrong — casino rules resolve dealer naturals immediately.
+**Solution:** Changed the check to `if (isBlackjack(playerHand) || isBlackjack(dealerHand))` so both naturals trigger immediate resolution via `revealAndResolve()`. Added a dedicated `dealerBJ` branch in `resolveRound()` that fires before the bust/comparison checks.
+**Rule:** When adding early-exit conditions in `dealInitialCards()`, check both player AND dealer. Any condition that should prevent normal play must be caught before `gamePhase = 'playing'`.
+
+### [2026-02-01] Architecture: Keyboard shortcuts must route through existing guarded functions
+**Problem:** When adding keyboard shortcuts, there's a temptation to duplicate game logic inline in the keydown handler (e.g., directly mutating state on keypress).
+**Solution:** Every keyboard shortcut calls the same function as the corresponding button: `hit()`, `stand()`, `doubleDown()`, `placeBet()`, etc. Since these functions already guard with `gamePhase` checks, the shortcuts inherit all safety guarantees for free.
+**Rule:** Never duplicate game logic in input handlers. Always route through the canonical action functions so phase guards, balance checks, and state mutations stay in one place.
+
+### [2026-02-01] Architecture: saveState() call placement matters for persistence consistency
+**Problem:** localStorage must be saved at the right moments — too early and you save mid-mutation, too late and a page refresh loses data. The question was where to call `saveState()`.
+**Solution:** `saveState()` is called in exactly two places: (1) end of `resolveRound()` after all balance/stats mutations are complete, (2) in `newRound()` when balance resets to $500 on zero. This ensures every completed hand is persisted, and the zero-balance reset isn't lost.
+**Rule:** Call `saveState()` only after all mutations for a logical operation are complete. Don't save mid-round or during betting — only after resolution.
+
 ### [2026-02-01] Workflow: Slash commands work inline when session can't see new files
 **Problem:** After creating the slash command files mid-session, the CLI couldn't see them as registered commands because the session was still open. The user needed /review and /compound run immediately.
 **Solution:** Read the .md file directly with the Read tool, then executed its instructions manually. The commands are just prompt files — they work whether invoked as `/command` or read and followed inline.

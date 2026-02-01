@@ -10,6 +10,18 @@
 
 ---
 
+### [2026-02-01] Decision: localStorage persistence model
+**Context:** Players lose their balance and progress on page refresh. Need persistence without a backend.
+**Choice:** Three localStorage keys: `blackjack_balance` (int), `blackjack_stats` (JSON object), `blackjack_lastBet` (int). Load functions run at variable initialization time (before DOM refs). Save happens in `resolveRound()` and on zero-balance reset in `newRound()`. Stats object tracks: handsPlayed, wins, losses, pushes, blackjacks, biggestWin.
+**Alternatives considered:** (1) Save on every state change — rejected because betting-phase saves would persist incomplete state. (2) Single localStorage key with all game state — rejected because loading a mid-round state on refresh would be broken (no deck, no hands). (3) IndexedDB — overkill for simple key-value storage.
+**Outcome:** Clean separation. Balance and stats survive refresh. Game always starts in betting phase with a fresh deck regardless of persistence.
+
+### [2026-02-01] Decision: Rebet replaces current bet, not adds to it
+**Context:** The rebet function needed to decide whether pressing "Rebet" with an existing partial bet should add lastBet on top or replace the current bet entirely.
+**Choice:** Replace: `currentBet = lastBet`. This is simpler and matches casino rebet button behavior — it's a "bet the same as last time" shortcut, not an accumulator.
+**Alternatives considered:** Additive (`currentBet += lastBet` with overflow guard) — rejected because it creates confusing UX when combined with chip buttons.
+**Outcome:** Simple, predictable. Players can still fine-tune by clearing and using chips after rebet.
+
 ### [2026-02-01] Decision: Deduct-on-deal balance model
 **Context:** The game needs to track balance through bet placement, wins, losses, and double-downs. The question was when to deduct the bet from balance.
 **Choice:** Deduct in placeBet() when the deal button is clicked. addBet() only increments currentBet without touching balance. This means during the betting phase, balance shows the player's total money, and currentBet shows what they've committed. On deal, balance drops and only gets replenished by resolveRound().

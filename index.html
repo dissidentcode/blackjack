@@ -43,6 +43,7 @@
                 <button class="chip" onclick="addBet(100)">$100</button>
             </div>
             <div class="bet-actions">
+                <button id="rebet-btn" class="action-btn secondary hidden" onclick="rebet()">Rebet</button>
                 <button id="clear-bet-btn" class="action-btn secondary" onclick="clearBet()">Clear</button>
                 <button id="deal-btn" class="action-btn" onclick="placeBet()">Deal</button>
             </div>
@@ -57,6 +58,13 @@
 
         <!-- Round over -->
         <button id="deal-again-btn" class="action-btn deal-again hidden" onclick="newRound()">Deal Again</button>
+
+        <!-- Stats -->
+        <div class="stats-bar">
+            <button id="stats-toggle-btn" class="stats-toggle" onclick="toggleStats()">Stats</button>
+            <button class="stats-toggle" onclick="resetStats()">Reset</button>
+        </div>
+        <div id="stats-panel" class="stats-panel hidden"></div>
 
         <script src="script.js"></script>
     </div>

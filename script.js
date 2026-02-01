@@ -13,14 +13,48 @@ const RANK_VALUES = {
 const DEALER_DELAY = 600;
 const RESHUFFLE_THRESHOLD = 15;
 const STARTING_BALANCE = 500;
+const STORAGE_KEY_BALANCE = 'blackjack_balance';
+const STORAGE_KEY_STATS = 'blackjack_stats';
+const STORAGE_KEY_LAST_BET = 'blackjack_lastBet';
 
 // --- Game State ---
 let deck = [];
 let playerHand = [];
 let dealerHand = [];
-let balance = STARTING_BALANCE;
+let balance = loadBalance();
 let currentBet = 0;
+let lastBet = loadLastBet();
 let gamePhase = 'betting'; // betting | playing | dealerTurn | roundOver
+let stats = loadStats();
+
+// --- Persistence ---
+function loadBalance() {
+    const saved = localStorage.getItem(STORAGE_KEY_BALANCE);
+    if (saved !== null) {
+        const val = parseInt(saved, 10);
+        return val > 0 ? val : STARTING_BALANCE;
+    }
+    return STARTING_BALANCE;
+}
+
+function loadLastBet() {
+    const saved = localStorage.getItem(STORAGE_KEY_LAST_BET);
+    return saved !== null ? parseInt(saved, 10) : 0;
+}
+
+function loadStats() {
+    const saved = localStorage.getItem(STORAGE_KEY_STATS);
+    if (saved) {
+        try { return JSON.parse(saved); } catch (e) { /* fall through */ }
+    }
+    return { handsPlayed: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0, biggestWin: 0 };
+}
+
+function saveState() {
+    localStorage.setItem(STORAGE_KEY_BALANCE, balance);
+    localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(stats));
+    localStorage.setItem(STORAGE_KEY_LAST_BET, lastBet);
+}
 
 // --- DOM Elements ---
 const messageEl = document.getElementById('message-el');
@@ -30,7 +64,6 @@ const playerCardsEl = document.getElementById('player-cards');
 const dealerCardsEl = document.getElementById('dealer-cards');
 const playerScoreEl = document.getElementById('player-score');
 const dealerScoreEl = document.getElementById('dealer-score');
-const chipRow = document.getElementById('chip-row');
 const actionRow = document.getElementById('action-row');
 const dealAgainBtn = document.getElementById('deal-again-btn');
 const hitBtn = document.getElementById('hit-btn');
@@ -38,7 +71,10 @@ const standBtn = document.getElementById('stand-btn');
 const doubleBtn = document.getElementById('double-btn');
 const clearBetBtn = document.getElementById('clear-bet-btn');
 const dealBtn = document.getElementById('deal-btn');
+const rebetBtn = document.getElementById('rebet-btn');
 const bettingControls = document.getElementById('betting-controls');
+const statsToggleBtn = document.getElementById('stats-toggle-btn');
+const statsPanel = document.getElementById('stats-panel');
 
 // --- Deck Functions ---
 function createDeck() {
@@ -100,9 +136,17 @@ function clearBet() {
     renderGame();
 }
 
+function rebet() {
+    if (gamePhase !== 'betting') return;
+    if (lastBet === 0 || lastBet > balance) return;
+    currentBet = lastBet;
+    renderGame();
+}
+
 // --- Game Actions ---
 function placeBet() {
     if (gamePhase !== 'betting' || currentBet === 0) return;
+    lastBet = currentBet;
     balance -= currentBet;
     dealInitialCards();
 }
@@ -111,7 +155,7 @@ function dealInitialCards() {
     playerHand = [dealCard(), dealCard()];
     dealerHand = [dealCard(), dealCard()];
 
-    if (isBlackjack(playerHand)) {
+    if (isBlackjack(playerHand) || isBlackjack(dealerHand)) {
         gamePhase = 'roundOver';
         revealAndResolve();
         return;
@@ -189,7 +233,7 @@ function shouldDealerHit() {
 
 // --- Round Resolution ---
 function revealAndResolve() {
-    // Called when player has natural blackjack
+    // Called when player or dealer has natural blackjack
     renderGame();
     resolveRound();
 }
@@ -200,31 +244,54 @@ function resolveRound() {
     const playerBJ = isBlackjack(playerHand);
     const dealerBJ = isBlackjack(dealerHand);
     let msg = '';
+    let net = 0; // net gain for this round (negative = loss)
 
     if (playerBJ && dealerBJ) {
         msg = 'Both have Blackjack — Push!';
         balance += currentBet;
+        stats.pushes++;
+        stats.blackjacks++;
     } else if (playerBJ) {
         const payout = Math.floor(currentBet * 1.5);
         msg = 'Blackjack! You win $' + payout + '!';
         balance += currentBet + payout;
+        net = payout;
+        stats.wins++;
+        stats.blackjacks++;
+    } else if (dealerBJ) {
+        msg = 'Dealer has Blackjack. You lose $' + currentBet + '.';
+        net = -currentBet;
+        stats.losses++;
     } else if (player.total > 21) {
         msg = 'Bust! You lose $' + currentBet + '.';
+        net = -currentBet;
+        stats.losses++;
     } else if (dealer.total > 21) {
         msg = 'Dealer busts! You win $' + currentBet + '!';
         balance += currentBet * 2;
+        net = currentBet;
+        stats.wins++;
     } else if (player.total > dealer.total) {
         msg = 'You win $' + currentBet + '!';
         balance += currentBet * 2;
+        net = currentBet;
+        stats.wins++;
     } else if (player.total < dealer.total) {
         msg = 'Dealer wins. You lose $' + currentBet + '.';
+        net = -currentBet;
+        stats.losses++;
     } else {
         msg = 'Push! Bet returned.';
         balance += currentBet;
+        stats.pushes++;
     }
+
+    stats.handsPlayed++;
+    if (net > stats.biggestWin) stats.biggestWin = net;
 
     gamePhase = 'roundOver';
     messageEl.textContent = msg;
+    saveState();
     renderGame();
 }
 
@@ -232,6 +299,7 @@ function newRound() {
     if (balance === 0) {
         balance = STARTING_BALANCE;
         messageEl.textContent = 'Restarting with $' + STARTING_BALANCE + '. Good luck!';
+        saveState();
     } else {
         messageEl.textContent = 'Place your bet.';
     }
@@ -311,6 +379,7 @@ function renderGame() {
     const isOver = gamePhase === 'roundOver';
 
     bettingControls.classList.toggle('hidden', !isBetting);
+    rebetBtn.classList.toggle('hidden', !isBetting || lastBet === 0 || lastBet > balance);
     actionRow.classList.toggle('hidden', !isPlaying);
     dealAgainBtn.classList.toggle('hidden', !isOver);
 
@@ -319,6 +388,8 @@ function renderGame() {
         const canDouble = playerHand.length === 2 && currentBet <= balance;
         doubleBtn.disabled = !canDouble;
     }
+
+    renderStats();
 }
 
 // --- Utility ---
@@ -326,8 +397,65 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// --- Stats ---
+function toggleStats() {
+    statsPanel.classList.toggle('hidden');
+    renderStats();
+}
+
+function renderStats() {
+    if (statsPanel.classList.contains('hidden')) return;
+    const winRate = stats.handsPlayed > 0
+        ? Math.round((stats.wins / stats.handsPlayed) * 100)
+        : 0;
+    statsPanel.innerHTML =
+        '<div class="stats-grid">' +
+        '<span>Hands:</span><span>' + stats.handsPlayed + '</span>' +
+        '<span>Wins:</span><span>' + stats.wins + '</span>' +
+        '<span>Losses:</span><span>' + stats.losses + '</span>' +
+        '<span>Pushes:</span><span>' + stats.pushes + '</span>' +
+        '<span>Blackjacks:</span><span>' + stats.blackjacks + '</span>' +
+        '<span>Win rate:</span><span>' + winRate + '%</span>' +
+        '<span>Biggest win:</span><span>$' + stats.biggestWin + '</span>' +
+        '</div>';
+}
+
+function resetStats() {
+    if (!confirm('Reset all stats and balance?')) return;
+    stats = { handsPlayed: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0, biggestWin: 0 };
+    balance = STARTING_BALANCE;
+    lastBet = 0;
+    currentBet = 0;
+    saveState();
+    newRound();
+    renderStats();
+}
+
+// --- Keyboard Shortcuts ---
+document.addEventListener('keydown', function(e) {
+    // Ignore if user is typing in an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const key = e.key.toLowerCase();
+
+    if (gamePhase === 'betting') {
+        if (key === '1') addBet(10);
+        else if (key === '2') addBet(25);
+        else if (key === '3') addBet(50);
+        else if (key === '4') addBet(100);
+        else if (key === 'enter') placeBet();
+        else if (key === 'c' || key === 'escape') clearBet();
+        else if (key === 'r') rebet();
+    } else if (gamePhase === 'playing') {
+        if (key === 'h') hit();
+        else if (key === 's') stand();
+        else if (key === 'd') doubleDown();
+    } else if (gamePhase === 'roundOver') {
+        if (key === 'enter') newRound();
+    }
+});
+
 // --- Init ---
 deck = shuffleDeck(createDeck());
-balance -= 0; // no-op, just establishing initial balance display
 messageEl.textContent = 'Place your bet.';
 renderGame();
