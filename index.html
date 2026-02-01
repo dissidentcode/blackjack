@@ -12,8 +12,10 @@
 </head>
 <body>
     <div class="wrapper">
-        <img class="logo" src="images/jack-logo.webp" alt="jack-image">
-        <h1>Blackjack</h1>
+        <div class="header">
+            <img class="logo" src="images/jack-logo.webp" alt="jack-image">
+            <h1>Blackjack</h1>
+        </div>
         <p id="message-el">Place your bet.</p>
 
         <!-- Info bar -->
@@ -22,7 +24,7 @@
             <span>Bet: <strong id="bet-el">-</strong></span>
         </div>
 
-        <!-- Bet stack (visual chips) -->
+        <!-- Bet stack (visual chips) — fixed-height zone, chips stack upward -->
         <div id="bet-stack"></div>
 
         <!-- Dealer area -->

@@ -734,10 +734,12 @@ function spawnConfetti() {
 
 function renderBetStack() {
     betStackEl.innerHTML = '';
-    const amount = gamePhase === 'betting' ? currentBet : 0;
+    const amount = gamePhase === 'betting' ? currentBet
+        : handBets.length > 0 ? handBets.reduce((a, b) => a + b, 0)
+        : 0;
     if (amount === 0) return;
 
-    const denoms = [100, 50, 25, 10];
+    const denoms = [500, 250, 100, 50, 25, 10];
     const smallerDenoms = denoms.map((_, i) => denoms.slice(i + 1));
     let remaining = amount;
     let chipIndex = 0;
