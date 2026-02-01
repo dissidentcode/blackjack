@@ -78,6 +78,7 @@ const dealBtn = document.getElementById('deal-btn');
 const rebetBtn = document.getElementById('rebet-btn');
 const splitBtn = document.getElementById('split-btn');
 const surrenderBtn = document.getElementById('surrender-btn');
+const insuranceBtn = document.getElementById('insurance-btn');
 const insuranceRow = document.getElementById('insurance-row');
 const bettingControls = document.getElementById('betting-controls');
 const statsToggleBtn = document.getElementById('stats-toggle-btn');
@@ -176,6 +177,7 @@ function dealInitialCards() {
             // Even money: guarantee 1:1 payout instead of risking push
             if (maxInsurance > 0 && maxInsurance <= balance) {
                 gamePhase = 'insurance';
+                insuranceBtn.textContent = 'Even Money';
                 messageEl.textContent = 'Even money? Take 1:1 now or risk the push.';
                 renderGame();
                 return;
@@ -183,10 +185,15 @@ function dealInitialCards() {
         } else {
             if (maxInsurance > 0 && maxInsurance <= balance) {
                 gamePhase = 'insurance';
+                insuranceBtn.textContent = 'Insurance';
                 messageEl.textContent = 'Insurance? (half your bet: $' + maxInsurance + ')';
                 renderGame();
                 return;
             }
+        }
+        // Dealer shows Ace but player can't afford insurance
+        if (maxInsurance > balance) {
+            messageEl.textContent = "Can't afford insurance.";
         }
     }
 
@@ -481,7 +488,8 @@ function createCardElement(card, faceDown) {
 function renderGame() {
     // Balance and bet
     balanceEl.textContent = '$' + balance;
-    const totalBet = (handBets.length > 0 ? handBets.reduce((a, b) => a + b, 0) : currentBet) + insuranceBet;
+    const mainBet = handBets.length > 0 ? handBets.reduce((a, b) => a + b, 0) : currentBet;
+    const totalBet = mainBet + (gamePhase === 'insurance' ? insuranceBet : 0);
     betEl.textContent = totalBet > 0 ? '$' + totalBet : '-';
 
     // Dealer cards
