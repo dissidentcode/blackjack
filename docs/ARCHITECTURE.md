@@ -10,6 +10,24 @@
 
 ---
 
+### [2026-02-01] Decision: Plan persistence in files, not session context
+**Context:** After implementing Tier 5 and clearing context, `/work` couldn't find its place — TaskList was empty and the roadmap was stale. The project had no reliable way to resume across sessions.
+**Choice:** `docs/plan-roadmap.md` is the master plan of record. Feature plans use `docs/plan-<feature>.md`. All slash commands read and update these files. `/work` checks off items on completion. `/compound` verifies freshness. `/plan` never overwrites — reads existing plans and updates in place. CLAUDE.md documents the invariant under "Plan Persistence Rules."
+**Alternatives considered:** (1) Persist TaskList to localStorage or a file — rejected because TaskList is a session UX tool, not a durable store. (2) Rely solely on `/compound` to fix staleness — rejected because it only runs at session end, and the user might clear context before running it. (3) Use git commit messages as the progress record — rejected because they don't have the checkbox structure needed for "what's next."
+**Outcome:** Every slash command can now recover project state from files alone. Context clears are safe after any command. The Tier 5 staleness bug is structurally prevented.
+
+### [2026-02-01] Decision: Two-row action button layout
+**Context:** With Split and Surrender added in Tier 3, the action row could show up to 5 buttons. All 5 in a single flex row overflowed on standard viewports.
+**Choice:** Split into `.action-row-primary` (Hit, Stand) and `.action-row-secondary` (Double, Split, Surrender) inside a vertical flex column. Primary buttons are gold (main actions), secondary are white/translucent (situational actions). This groups by action frequency and visual importance.
+**Alternatives considered:** (1) `flex-wrap` on the single row — would work but wraps unpredictably depending on viewport width, creating inconsistent layouts. (2) Reduce button padding/font-size — rejected because touch targets were already at minimum for mobile. (3) Icon-only buttons — rejected because text labels are clearer for a card game.
+**Outcome:** Clean two-row layout. Primary actions always visible and prominent. Secondary actions grouped below. Mobile 420px breakpoint uses flex-wrap within each sub-row for graceful degradation.
+
+### [2026-02-01] Decision: Scope-aware /test command
+**Context:** `/test` loaded all three source files (~1400 lines) unconditionally, even for targeted tests. This bloated context and made testing slower.
+**Choice:** Argument-based scope mapping. `/test payouts` loads only script.js via Grep. `/test dom` loads HTML + CSS + targeted JS functions. `/test all` loads everything. A mapping table translates arguments to scenario subsets and file loading strategies.
+**Alternatives considered:** (1) Always load everything — simple but wasteful, and gets worse as the codebase grows. (2) Separate test commands per area (`/test-payouts`, `/test-dom`) — rejected because it would mean many small command files that are hard to maintain. (3) Load nothing and let the agent decide — rejected because explicit guidance produces more consistent results.
+**Outcome:** Context usage proportional to scope. The full 22-scenario suite is still available when needed.
+
 ### [2026-02-01] Decision: CSS-only animations with JS render count tracking
 **Context:** Adding card deal animations, score popups, and dealer flip to a game where `renderGame()` clears and rebuilds all DOM elements on every call. Animations would re-trigger on every re-render.
 **Choice:** CSS `@keyframes` for all animations (deal slide-in, score float, chip drop, confetti fall). JS tracks `lastRenderedDealerCount` and `lastRenderedHandCounts[]` to distinguish new vs. existing cards. New cards get `--deal-index` CSS custom property for stagger; existing cards get `.no-animate` class. Timing constants live in CSS custom properties on `:root` only — no JS timing constants needed.

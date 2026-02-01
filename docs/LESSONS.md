@@ -9,6 +9,21 @@
 
 ---
 
+### [2026-02-01] Workflow: Plan files go stale when TaskList is the only progress tracker
+**Problem:** Tier 5 (7 items) was fully implemented, reviewed, and merged in a previous session. But `docs/plan-roadmap.md` still showed all 7 items unchecked because `/work` only updated TaskList (session-scoped), not the plan files. After context clear, `/work` found an empty TaskList and couldn't determine where to pick up. The roadmap was the only persistent record, and it was wrong.
+**Solution:** Systemic fix across all slash commands: `/work` now updates plan file checkboxes AND TaskList on completion. `/compound` verifies plan files match reality. `/plan` reads existing plans before creating new ones and never overwrites. CLAUDE.md documents the invariant: "Plans live in files, not in context."
+**Rule:** TaskList is session-scoped and will not survive context clears. Every task completion MUST update the persistent plan file (`docs/plan-*.md`). `/compound` must verify plan freshness as a mandatory step, not an afterthought.
+
+### [2026-02-01] UI: Action buttons overflow when all 5 are visible (Hit/Stand/Double/Split/Surrender)
+**Problem:** All 5 action buttons were in a single flex row with no wrapping. On standard viewports, Hit was clipped to just "t" and Surrender was cut off on the right edge. This only manifested when Split and Surrender were both visible (pair of 8s scenario), which is easy to miss in casual testing.
+**Solution:** Restructured `#action-row` into two sub-rows: `.action-row-primary` (Hit, Stand — gold buttons) and `.action-row-secondary` (Double, Split, Surrender — white/translucent buttons). Parent is a vertical flex column. Updated the 420px mobile breakpoint to use `flex-wrap` on sub-rows instead of the old 2-column grid.
+**Rule:** Always test button layouts with the MAXIMUM number of visible elements, not just the common case. For action buttons, the worst case is a splittable pair with sufficient balance (all 5 buttons visible).
+
+### [2026-02-01] Workflow: Slash commands that read entire source files bloat context unnecessarily
+**Problem:** `/test` instructed "Read ALL three source files in full before testing" unconditionally. For scoped tests (e.g., testing just payout math), this loaded ~1400 lines of irrelevant HTML/CSS into context.
+**Solution:** Made `/test` scope-aware: accepts arguments like `/test payouts`, `/test split`, `/test dom`. A scope mapping table determines which files to read and which scenarios to run. For logic-only scopes, only script.js (via Grep, not full read) is loaded. Full reads reserved for "all" or no-argument invocations.
+**Rule:** Slash commands should load context proportional to their scope. Use Grep to find relevant functions rather than reading entire files. Reserve full file reads for commands that genuinely need the complete picture (like `/review` which needs full files for context around diffs).
+
 ### [2026-02-01] Architecture: CSS insertion animations avoid renderGame() refactor
 **Problem:** `renderGame()` clears and rebuilds the entire DOM on every call (`innerHTML = ''`). Adding card animations would re-trigger on every re-render, not just when new cards appear. A diffing renderer would fix this but is a massive refactor.
 **Solution:** Track `lastRenderedDealerCount` and `lastRenderedHandCounts[]` to know which cards already existed. New cards get `isNew=true` (animated with `--deal-index` stagger). Existing cards get `.no-animate` class. Counts reset in `newRound()` and adjusted in `split()` (`[1, 1]` — one old card per hand). The full-rebuild pattern stays intact; animation tracking is a lightweight overlay.
