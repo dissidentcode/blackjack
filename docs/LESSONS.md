@@ -9,6 +9,16 @@
 
 ---
 
+### [2026-02-01] Workflow: Slash commands work inline when session can't see new files
+**Problem:** After creating the slash command files mid-session, the CLI couldn't see them as registered commands because the session was still open. The user needed /review and /compound run immediately.
+**Solution:** Read the .md file directly with the Read tool, then executed its instructions manually. The commands are just prompt files — they work whether invoked as `/command` or read and followed inline.
+**Rule:** If a slash command was just created and the session hasn't refreshed, read the .md and execute its instructions. The commands are portable prompts, not magic.
+
+### [2026-02-01] Testing: Structured test scenarios with expected values catch bugs systematically
+**Problem:** Ad-hoc testing ("does it work?") misses edge cases. The first round of testing was less structured and still caught the double-down bug, but only because it was obvious.
+**Solution:** The /test command now has 22 numbered scenarios with exact expected values (e.g., "$50 bet blackjack: payout=75, balance=575, net=+75"). Tracing each against actual code line by line leaves no ambiguity.
+**Rule:** Every test scenario should include the specific expected numeric result, not just "verify it works." Trace the actual code lines, don't reason abstractly.
+
 ### [2026-02-01] Bug: Double-down guard used wrong comparison
 **Problem:** The doubleDown() guard was `if (currentBet > balance - currentBet) return` which double-subtracted currentBet. Since placeBet() already deducted the initial bet from balance, the guard was too restrictive — it blocked valid double-downs when the player could afford them (e.g. balance=250, currentBet=250: `250 > 250-250` → blocked).
 **Solution:** Changed to `if (currentBet > balance) return` — simple check against remaining balance.
