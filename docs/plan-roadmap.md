@@ -68,6 +68,10 @@ Prioritized improvements organized by value and effort. This is the persistent p
 
 ---
 
+## Completed Ad-Hoc Improvements
+
+- [x] **Bet stack UX overhaul** — Fixed layout shift, added $500/$250 visual denominations, persistent chips during play, compact inline header. See `docs/plan-bet-stack-ux.md`.
+
 ## Active Feature Plans
 
 Feature-specific plans are stored as `docs/plan-<feature>.md`. When a feature plan is fully completed, its items should be checked off here in the roadmap and the feature plan file can be deleted or kept as historical reference.

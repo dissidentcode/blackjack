@@ -1,4 +1,4 @@
-# Plan: Bet Stack UX — Fixed Position + Higher Denominations
+# Plan: Bet Stack UX — Fixed Position + Higher Denominations — COMPLETED
 
 ## Overview
 Two related problems with the visual chip stack during betting:
