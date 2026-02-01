@@ -11,7 +11,8 @@ const RANK_VALUES = {
     '8': 8, '9': 9, '10': 10, 'J': 10, 'Q': 10, 'K': 10
 };
 const DEALER_DELAY = 600;
-const RESHUFFLE_THRESHOLD = 15;
+const NUM_DECKS = 6;
+const RESHUFFLE_THRESHOLD = 15 * NUM_DECKS;
 const STARTING_BALANCE = 500;
 const STORAGE_KEY_BALANCE = 'blackjack_balance';
 const STORAGE_KEY_STATS = 'blackjack_stats';
@@ -26,7 +27,8 @@ let dealerHand = [];
 let balance = loadBalance();
 let currentBet = 0;
 let lastBet = loadLastBet();
-let gamePhase = 'betting'; // betting | playing | dealerTurn | roundOver
+let gamePhase = 'betting'; // betting | insurance | playing | dealerTurn | roundOver
+let insuranceBet = 0;
 let stats = loadStats();
 
 // --- Persistence ---
@@ -75,6 +77,8 @@ const clearBetBtn = document.getElementById('clear-bet-btn');
 const dealBtn = document.getElementById('deal-btn');
 const rebetBtn = document.getElementById('rebet-btn');
 const splitBtn = document.getElementById('split-btn');
+const surrenderBtn = document.getElementById('surrender-btn');
+const insuranceRow = document.getElementById('insurance-row');
 const bettingControls = document.getElementById('betting-controls');
 const statsToggleBtn = document.getElementById('stats-toggle-btn');
 const statsPanel = document.getElementById('stats-panel');
@@ -82,9 +86,11 @@ const statsPanel = document.getElementById('stats-panel');
 // --- Deck Functions ---
 function createDeck() {
     const d = [];
-    for (const suit of SUITS) {
-        for (const rank of RANKS) {
-            d.push({ suit, rank, value: RANK_VALUES[rank] });
+    for (let n = 0; n < NUM_DECKS; n++) {
+        for (const suit of SUITS) {
+            for (const rank of RANKS) {
+                d.push({ suit, rank, value: RANK_VALUES[rank] });
+            }
         }
     }
     return d;
@@ -158,8 +164,36 @@ function dealInitialCards() {
     playerHands = [[dealCard(), dealCard()]];
     activeHandIndex = 0;
     handBets = [currentBet];
+    insuranceBet = 0;
     dealerHand = [dealCard(), dealCard()];
 
+    const dealerShowsAce = dealerHand[1].rank === 'A';
+    const playerBJ = isBlackjack(playerHands[0]);
+
+    if (dealerShowsAce) {
+        const maxInsurance = Math.floor(handBets[0] / 2);
+        if (playerBJ) {
+            // Even money: guarantee 1:1 payout instead of risking push
+            if (maxInsurance > 0 && maxInsurance <= balance) {
+                gamePhase = 'insurance';
+                messageEl.textContent = 'Even money? Take 1:1 now or risk the push.';
+                renderGame();
+                return;
+            }
+        } else {
+            if (maxInsurance > 0 && maxInsurance <= balance) {
+                gamePhase = 'insurance';
+                messageEl.textContent = 'Insurance? (half your bet: $' + maxInsurance + ')';
+                renderGame();
+                return;
+            }
+        }
+    }
+
+    checkBlackjacksAndContinue();
+}
+
+function checkBlackjacksAndContinue() {
     if (isBlackjack(playerHands[0]) || isBlackjack(dealerHand)) {
         gamePhase = 'roundOver';
         revealAndResolve();
@@ -168,6 +202,21 @@ function dealInitialCards() {
 
     gamePhase = 'playing';
     renderGame();
+}
+
+function takeInsurance() {
+    if (gamePhase !== 'insurance') return;
+    const amount = Math.floor(handBets[0] / 2);
+    if (amount > balance) return;
+    insuranceBet = amount;
+    balance -= amount;
+    checkBlackjacksAndContinue();
+}
+
+function declineInsurance() {
+    if (gamePhase !== 'insurance') return;
+    insuranceBet = 0;
+    checkBlackjacksAndContinue();
 }
 
 function hit() {
@@ -251,6 +300,27 @@ function split() {
         return;
     }
 
+    renderGame();
+}
+
+function surrender() {
+    if (gamePhase !== 'playing') return;
+    if (playerHands.length > 1) return; // no surrender after split
+    const hand = playerHands[activeHandIndex];
+    if (hand.length !== 2) return; // only on first two cards
+
+    // Return half the bet, forfeit the other half
+    const bet = handBets[activeHandIndex];
+    const halfBet = Math.floor(bet / 2);
+    balance += halfBet;
+    handBets[activeHandIndex] = 0; // mark as surrendered (0 bet = no payout in resolve)
+
+    stats.handsPlayed++;
+    stats.losses++;
+
+    gamePhase = 'roundOver';
+    messageEl.textContent = 'Surrendered. $' + halfBet + ' returned.';
+    saveState();
     renderGame();
 }
 
@@ -347,6 +417,19 @@ function resolveRound() {
         messages.push(isSplit ? 'Hand ' + (i + 1) + ': ' + msg : msg);
     }
 
+    // Insurance resolution
+    if (insuranceBet > 0) {
+        if (dealerBJ) {
+            const insurancePayout = insuranceBet * 2;
+            balance += insuranceBet + insurancePayout;
+            totalNet += insurancePayout;
+            messages.push('Insurance pays +$' + insurancePayout + '!');
+        } else {
+            totalNet -= insuranceBet;
+            messages.push('Insurance lost (-$' + insuranceBet + ').');
+        }
+    }
+
     if (totalNet > stats.biggestWin) stats.biggestWin = totalNet;
 
     gamePhase = 'roundOver';
@@ -366,6 +449,7 @@ function newRound() {
     playerHands = [[]];
     activeHandIndex = 0;
     handBets = [];
+    insuranceBet = 0;
     dealerHand = [];
     currentBet = 0;
     gamePhase = 'betting';
@@ -397,12 +481,12 @@ function createCardElement(card, faceDown) {
 function renderGame() {
     // Balance and bet
     balanceEl.textContent = '$' + balance;
-    const totalBet = handBets.length > 0 ? handBets.reduce((a, b) => a + b, 0) : currentBet;
+    const totalBet = (handBets.length > 0 ? handBets.reduce((a, b) => a + b, 0) : currentBet) + insuranceBet;
     betEl.textContent = totalBet > 0 ? '$' + totalBet : '-';
 
     // Dealer cards
     dealerCardsEl.innerHTML = '';
-    const hideHole = gamePhase === 'playing';
+    const hideHole = gamePhase === 'playing' || gamePhase === 'insurance';
     for (let i = 0; i < dealerHand.length; i++) {
         const faceDown = hideHole && i === 0;
         dealerCardsEl.appendChild(createCardElement(dealerHand[i], faceDown));
@@ -484,10 +568,12 @@ function renderGame() {
     // Controls visibility
     const isBetting = gamePhase === 'betting';
     const isPlaying = gamePhase === 'playing';
+    const isInsurance = gamePhase === 'insurance';
     const isOver = gamePhase === 'roundOver';
 
     bettingControls.classList.toggle('hidden', !isBetting);
     rebetBtn.classList.toggle('hidden', !isBetting || lastBet === 0 || lastBet > balance);
+    insuranceRow.classList.toggle('hidden', !isInsurance);
     actionRow.classList.toggle('hidden', !isPlaying);
     dealAgainBtn.classList.toggle('hidden', !isOver);
 
@@ -502,8 +588,12 @@ function renderGame() {
             hand[0].rank === hand[1].rank && handBets[0] <= balance;
         splitBtn.disabled = !canSplit;
         splitBtn.classList.toggle('hidden', !canSplit);
+
+        const canSurrender = !isSplit && hand.length === 2;
+        surrenderBtn.classList.toggle('hidden', !canSurrender);
     } else {
         splitBtn.classList.add('hidden');
+        surrenderBtn.classList.add('hidden');
     }
 
     renderStats();
@@ -563,11 +653,15 @@ document.addEventListener('keydown', function(e) {
         else if (key === 'enter') placeBet();
         else if (key === 'c' || key === 'escape') clearBet();
         else if (key === 'r') rebet();
+    } else if (gamePhase === 'insurance') {
+        if (key === 'y') takeInsurance();
+        else if (key === 'n') declineInsurance();
     } else if (gamePhase === 'playing') {
         if (key === 'h') hit();
         else if (key === 's') stand();
         else if (key === 'd') doubleDown();
         else if (key === 'p') split();
+        else if (key === 'u') surrender();
     } else if (gamePhase === 'roundOver') {
         if (key === 'enter') newRound();
     }
