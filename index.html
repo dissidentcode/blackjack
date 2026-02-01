@@ -22,6 +22,9 @@
             <span>Bet: <strong id="bet-el">-</strong></span>
         </div>
 
+        <!-- Bet stack (visual chips) -->
+        <div id="bet-stack"></div>
+
         <!-- Dealer area -->
         <div class="hand-area">
             <div class="hand-label">Dealer <span id="dealer-score" class="score-badge hidden"></span></div>
@@ -73,6 +76,9 @@
             <button class="stats-toggle" onclick="resetStats()">Reset</button>
         </div>
         <div id="stats-panel" class="stats-panel hidden"></div>
+
+        <!-- Confetti overlay -->
+        <div id="confetti-container" class="confetti-container"></div>
 
         <script src="script.js"></script>
     </div>

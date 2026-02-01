@@ -31,6 +31,12 @@ let gamePhase = 'betting'; // betting | insurance | playing | dealerTurn | round
 let insuranceBet = 0;
 let stats = loadStats();
 
+// --- Animation Tracking ---
+let lastRenderedDealerCount = 0;
+let lastRenderedHandCounts = [0];
+let prevHideHole = false;
+let holeCardEl = null; // preserved dealer hole card element for flip
+
 // --- Persistence ---
 function loadBalance() {
     const saved = localStorage.getItem(STORAGE_KEY_BALANCE);
@@ -81,6 +87,8 @@ const surrenderBtn = document.getElementById('surrender-btn');
 const insuranceBtn = document.getElementById('insurance-btn');
 const insuranceRow = document.getElementById('insurance-row');
 const bettingControls = document.getElementById('betting-controls');
+const betStackEl = document.getElementById('bet-stack');
+const confettiContainer = document.getElementById('confetti-container');
 const statsToggleBtn = document.getElementById('stats-toggle-btn');
 const statsPanel = document.getElementById('stats-panel');
 
@@ -299,6 +307,8 @@ function split() {
     playerHands = [[card1, dealCard()], [card2, dealCard()]];
     handBets = [handBets[0], handBets[0]];
     activeHandIndex = 0;
+    // Reset animation counts: 1 old card + 1 new card per hand
+    lastRenderedHandCounts = [1, 1];
 
     // If active hand hits 21, auto-advance
     const { total } = calculateHandValue(playerHands[0]);
@@ -443,6 +453,17 @@ function resolveRound() {
     messageEl.textContent = messages.join(' | ');
     saveState();
     renderGame();
+
+    // Determine dominant effect
+    const anyBJ = playerHands.some(h => !isSplit && isBlackjack(h));
+    const allBusted = playerHands.every(h => calculateHandValue(h).total > 21);
+    if (anyBJ) {
+        showRoundEffect('blackjack');
+    } else if (allBusted) {
+        showRoundEffect('bust');
+    } else if (totalNet > 0) {
+        showRoundEffect('win');
+    }
 }
 
 function newRound() {
@@ -460,27 +481,68 @@ function newRound() {
     dealerHand = [];
     currentBet = 0;
     gamePhase = 'betting';
+    // Reset animation tracking
+    lastRenderedDealerCount = 0;
+    lastRenderedHandCounts = [0];
+    prevHideHole = false;
+    holeCardEl = null;
     renderGame();
 }
 
 // --- Rendering ---
-function createCardElement(card, faceDown) {
+function buildFaceUpCard(card) {
     const el = document.createElement('div');
     el.classList.add('card');
-
-    if (faceDown) {
-        el.classList.add('face-down');
-        return el;
-    }
-
     const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
     el.classList.add(isRed ? 'red' : 'black');
-
     const symbol = SUIT_SYMBOLS[card.suit];
     el.innerHTML =
         '<span class="card-corner top-left"><span class="card-rank">' + card.rank + '</span><span class="card-suit">' + symbol + '</span></span>' +
         '<span class="card-center">' + symbol + '</span>' +
         '<span class="card-corner bottom-right"><span class="card-rank">' + card.rank + '</span><span class="card-suit">' + symbol + '</span></span>';
+    return el;
+}
+
+function createCardElement(card, faceDown, dealIndex, isNew) {
+    if (faceDown) {
+        // Build flippable dual-face structure for dealer hole card
+        const container = document.createElement('div');
+        container.classList.add('card-flipper-container');
+        if (isNew) {
+            container.style.setProperty('--deal-index', dealIndex);
+        } else {
+            container.classList.add('no-animate');
+        }
+
+        const flipper = document.createElement('div');
+        flipper.classList.add('card-flipper');
+
+        const front = buildFaceUpCard(card);
+        front.classList.add('card-front');
+        front.classList.add('no-animate');
+
+        const back = document.createElement('div');
+        back.classList.add('card-back');
+
+        flipper.appendChild(front);
+        flipper.appendChild(back);
+        container.appendChild(flipper);
+        return container;
+    }
+
+    const el = buildFaceUpCard(card);
+
+    if (isNew) {
+        el.style.setProperty('--deal-index', dealIndex);
+        // Score popup for new face-up cards
+        const value = RANK_VALUES[card.rank];
+        const popup = document.createElement('span');
+        popup.classList.add('score-popup');
+        popup.textContent = '+' + value;
+        el.appendChild(popup);
+    } else {
+        el.classList.add('no-animate');
+    }
 
     return el;
 }
@@ -493,12 +555,37 @@ function renderGame() {
     betEl.textContent = totalBet > 0 ? '$' + totalBet : '-';
 
     // Dealer cards
-    dealerCardsEl.innerHTML = '';
     const hideHole = gamePhase === 'playing' || gamePhase === 'insurance';
-    for (let i = 0; i < dealerHand.length; i++) {
-        const faceDown = hideHole && i === 0;
-        dealerCardsEl.appendChild(createCardElement(dealerHand[i], faceDown));
+    const wasHiding = prevHideHole;
+    const shouldFlip = wasHiding && !hideHole && dealerHand.length >= 2 && holeCardEl;
+
+    if (shouldFlip) {
+        // Flip the preserved hole card element instead of rebuilding
+        const flipper = holeCardEl.querySelector('.card-flipper');
+        if (flipper) flipper.classList.add('flipping');
+
+        // Rebuild remaining dealer cards after the hole card
+        while (dealerCardsEl.children.length > 1) {
+            dealerCardsEl.removeChild(dealerCardsEl.lastChild);
+        }
+        for (let i = 1; i < dealerHand.length; i++) {
+            const isNew = i >= lastRenderedDealerCount;
+            dealerCardsEl.appendChild(createCardElement(dealerHand[i], false, i, isNew));
+        }
+        holeCardEl = null;
+    } else {
+        dealerCardsEl.innerHTML = '';
+        for (let i = 0; i < dealerHand.length; i++) {
+            const faceDown = hideHole && i === 0;
+            const isNew = i >= lastRenderedDealerCount;
+            const el = createCardElement(dealerHand[i], faceDown, i, isNew);
+            dealerCardsEl.appendChild(el);
+            if (faceDown && i === 0) holeCardEl = el;
+        }
     }
+
+    prevHideHole = hideHole;
+    lastRenderedDealerCount = dealerHand.length;
 
     // Dealer score
     if (dealerHand.length > 0) {
@@ -515,18 +602,17 @@ function renderGame() {
 
     // Player hands
     const playerArea = playerCardsEl.parentElement;
-    // Remove any extra hand containers from previous renders
     playerArea.querySelectorAll('.split-hand').forEach(el => el.remove());
 
     const isSplit = playerHands.length > 1;
 
     if (isSplit) {
-        // Hide the default card row and score — we'll render per-hand
         playerCardsEl.innerHTML = '';
         playerScoreEl.classList.add('hidden');
 
         for (let h = 0; h < playerHands.length; h++) {
             const hand = playerHands[h];
+            const prevCount = lastRenderedHandCounts[h] || 0;
             const container = document.createElement('div');
             container.classList.add('split-hand');
             if (gamePhase === 'playing' && h === activeHandIndex) {
@@ -540,8 +626,9 @@ function renderGame() {
 
             const cardRow = document.createElement('div');
             cardRow.classList.add('card-row');
-            for (const card of hand) {
-                cardRow.appendChild(createCardElement(card, false));
+            for (let c = 0; c < hand.length; c++) {
+                const isNew = c >= prevCount;
+                cardRow.appendChild(createCardElement(hand[c], false, c, isNew));
             }
             container.appendChild(cardRow);
 
@@ -555,14 +642,17 @@ function renderGame() {
             }
 
             playerArea.appendChild(container);
+            lastRenderedHandCounts[h] = hand.length;
         }
     } else {
-        // Single hand — use existing elements
         playerCardsEl.innerHTML = '';
         const hand = playerHands[0];
-        for (const card of hand) {
-            playerCardsEl.appendChild(createCardElement(card, false));
+        const prevCount = lastRenderedHandCounts[0] || 0;
+        for (let c = 0; c < hand.length; c++) {
+            const isNew = c >= prevCount;
+            playerCardsEl.appendChild(createCardElement(hand[c], false, c, isNew));
         }
+        lastRenderedHandCounts[0] = hand.length;
 
         if (hand.length > 0) {
             const pv = calculateHandValue(hand);
@@ -573,17 +663,20 @@ function renderGame() {
         }
     }
 
-    // Controls visibility
+    // Bet stack
+    renderBetStack();
+
+    // Controls visibility — phase transitions
     const isBetting = gamePhase === 'betting';
     const isPlaying = gamePhase === 'playing';
     const isInsurance = gamePhase === 'insurance';
     const isOver = gamePhase === 'roundOver';
 
-    bettingControls.classList.toggle('hidden', !isBetting);
+    setPhaseVisibility(bettingControls, isBetting);
     rebetBtn.classList.toggle('hidden', !isBetting || lastBet === 0 || lastBet > balance);
-    insuranceRow.classList.toggle('hidden', !isInsurance);
-    actionRow.classList.toggle('hidden', !isPlaying);
-    dealAgainBtn.classList.toggle('hidden', !isOver);
+    setPhaseVisibility(insuranceRow, isInsurance);
+    setPhaseVisibility(actionRow, isPlaying);
+    setPhaseVisibility(dealAgainBtn, isOver);
 
     // Double down and split availability
     if (isPlaying) {
@@ -605,6 +698,79 @@ function renderGame() {
     }
 
     renderStats();
+}
+
+// --- Visual Effects ---
+function showRoundEffect(type) {
+    if (type === 'blackjack') {
+        spawnConfetti();
+    } else if (type === 'win') {
+        const area = playerCardsEl.closest('.hand-area');
+        area.classList.add('win-flash');
+        area.addEventListener('animationend', () => area.classList.remove('win-flash'), { once: true });
+    } else if (type === 'bust') {
+        // Apply to active card row
+        const rows = document.querySelectorAll('#player-cards, .split-hand .card-row');
+        rows.forEach(row => {
+            row.classList.add('bust-shake');
+            row.addEventListener('animationend', () => row.classList.remove('bust-shake'), { once: true });
+        });
+    }
+}
+
+function spawnConfetti() {
+    const colors = ['#daa520', '#fff', '#1a8c3a', '#ffd700', '#c0c0c0'];
+    for (let i = 0; i < 30; i++) {
+        const piece = document.createElement('span');
+        piece.classList.add('confetti-piece');
+        piece.style.left = Math.random() * 100 + '%';
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDelay = Math.random() * 0.5 + 's';
+        piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        confettiContainer.appendChild(piece);
+    }
+    setTimeout(() => { confettiContainer.innerHTML = ''; }, 2500);
+}
+
+function renderBetStack() {
+    betStackEl.innerHTML = '';
+    const amount = gamePhase === 'betting' ? currentBet : 0;
+    if (amount === 0) return;
+
+    const denoms = [100, 50, 25, 10];
+    let remaining = amount;
+    let chipIndex = 0;
+
+    for (const denom of denoms) {
+        const count = Math.floor(remaining / denom);
+        if (count === 0) continue;
+        remaining -= count * denom;
+
+        const col = document.createElement('div');
+        col.classList.add('chip-stack-column');
+        for (let i = 0; i < count; i++) {
+            const chip = document.createElement('div');
+            chip.classList.add('visual-chip', 'chip-' + denom);
+            chip.textContent = '$' + denom;
+            chip.style.animationDelay = chipIndex * 0.06 + 's';
+            col.appendChild(chip);
+            chipIndex++;
+        }
+        betStackEl.appendChild(col);
+    }
+}
+
+function setPhaseVisibility(el, visible) {
+    if (!el.classList.contains('phase-group')) {
+        el.classList.add('phase-group');
+    }
+    if (visible) {
+        el.classList.remove('phase-hidden', 'hidden');
+        el.classList.add('phase-visible');
+    } else {
+        el.classList.add('phase-hidden');
+        el.classList.remove('phase-visible');
+    }
 }
 
 // --- Utility ---

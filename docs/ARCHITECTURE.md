@@ -10,6 +10,18 @@
 
 ---
 
+### [2026-02-01] Decision: CSS-only animations with JS render count tracking
+**Context:** Adding card deal animations, score popups, and dealer flip to a game where `renderGame()` clears and rebuilds all DOM elements on every call. Animations would re-trigger on every re-render.
+**Choice:** CSS `@keyframes` for all animations (deal slide-in, score float, chip drop, confetti fall). JS tracks `lastRenderedDealerCount` and `lastRenderedHandCounts[]` to distinguish new vs. existing cards. New cards get `--deal-index` CSS custom property for stagger; existing cards get `.no-animate` class. Timing constants live in CSS custom properties on `:root` only — no JS timing constants needed.
+**Alternatives considered:** (1) Refactor `renderGame()` to a diffing renderer that preserves existing DOM nodes — rejected as too large a change for visual-only features. (2) Use `requestAnimationFrame` + JS-driven animations — rejected because CSS animations are simpler and more performant for insertion effects. (3) Add/remove individual elements instead of full rebuild — rejected because it would require tracking every card element individually.
+**Outcome:** Clean separation: game logic untouched, animation is a CSS layer with minimal JS tracking. The one exception is the dealer hole card flip which requires element preservation (`holeCardEl` + `prevHideHole` state).
+
+### [2026-02-01] Decision: Phase transitions via opacity/max-height instead of display:none
+**Context:** Phase control groups (betting, insurance, action row, deal-again) used `.hidden { display: none !important }` which can't be animated. Needed smooth fade transitions between game phases.
+**Choice:** New `setPhaseVisibility()` function replaces `.hidden` toggles for the four phase control groups. Uses `.phase-hidden` (opacity:0, max-height:0, pointer-events:none) and `.phase-visible` (opacity:1, max-height:500px) with CSS transitions on `.phase-group`. The original `.hidden` class is kept for non-phase elements (stats panel, split/surrender buttons).
+**Alternatives considered:** (1) Replace `.hidden` globally with animated classes — rejected because many elements (stats, conditional buttons) need instant show/hide without transitions. (2) Use CSS `@starting-style` for display:none animations — rejected because browser support is still limited. (3) JavaScript `requestAnimationFrame` timing — rejected as overengineered for simple fades.
+**Outcome:** Two visibility systems coexist cleanly: `.hidden` for instant toggle, `setPhaseVisibility()` for animated phase transitions. `pointer-events: none` blocks clicks during fade-out; keyboard shortcuts are already guarded by `gamePhase` checks in action functions.
+
 ### [2026-02-01] Decision: Insurance as a new game phase with extracted blackjack check
 **Context:** Insurance must be offered after dealing but before checking for blackjack — because the insurance decision depends on not yet knowing whether the dealer has BJ. The existing `dealInitialCards()` checked for blackjack and immediately resolved. Insurance needed to insert a decision point between dealing and BJ resolution.
 **Choice:** New `'insurance'` game phase. Extracted `checkBlackjacksAndContinue()` from the bottom of `dealInitialCards()` so it can be called either immediately (no insurance scenario) or after the insurance decision. Insurance controls (Insurance / No Thanks buttons) shown only during this phase. `takeInsurance()` deducts the side bet and calls `checkBlackjacksAndContinue()`. Insurance payout resolved at the end of `resolveRound()` after all hand resolutions.

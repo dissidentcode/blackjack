@@ -9,6 +9,21 @@
 
 ---
 
+### [2026-02-01] Architecture: CSS insertion animations avoid renderGame() refactor
+**Problem:** `renderGame()` clears and rebuilds the entire DOM on every call (`innerHTML = ''`). Adding card animations would re-trigger on every re-render, not just when new cards appear. A diffing renderer would fix this but is a massive refactor.
+**Solution:** Track `lastRenderedDealerCount` and `lastRenderedHandCounts[]` to know which cards already existed. New cards get `isNew=true` (animated with `--deal-index` stagger). Existing cards get `.no-animate` class. Counts reset in `newRound()` and adjusted in `split()` (`[1, 1]` — one old card per hand). The full-rebuild pattern stays intact; animation tracking is a lightweight overlay.
+**Rule:** When adding animations to a full-rebuild renderer, track "what was already visible" rather than refactoring to incremental DOM updates. Reset tracking state at the same points where game state resets.
+
+### [2026-02-01] Architecture: Dealer hole card flip requires element preservation
+**Problem:** The dealer hole card needs a smooth 3D flip animation when revealed. But `renderGame()` rebuilds all dealer cards from scratch on every call — the element gets destroyed and recreated, so CSS transitions never trigger.
+**Solution:** Build the hole card as a dual-face structure (`.card-flipper-container` > `.card-flipper` > `.card-front` + `.card-back`) with `backface-visibility: hidden`. Preserve the element in `holeCardEl`. Track `prevHideHole` to detect the hide→reveal transition. When flipping, add `.flipping` class to the preserved element instead of rebuilding it. Null `holeCardEl` after flip so subsequent renders rebuild normally.
+**Rule:** When a single element needs CSS transitions across render cycles in a full-rebuild renderer, preserve that specific element and apply the transition class surgically. Track a "previous state" variable to detect the transition moment. Null the reference after use to avoid stale DOM.
+
+### [2026-02-01] Workflow: Review catches dead code and unused constants from large feature PRs
+**Problem:** The Tier 5 visual polish PR (6 phases, ~580 lines added) shipped with: (1) dead `.card.face-down` CSS rule orphaned by the flipper refactor, (2) three unused JS constants (`DEAL_DURATION`, `DEAL_STAGGER`, `FLIP_DURATION`) that were defined for JS-CSS coordination but never used because timing is CSS-only, (3) a duplicate `.visual-chip` CSS block, (4) an unused `i` parameter in a lambda.
+**Solution:** Review caught all four. Cleanup pass removed dead CSS, unused constants, merged duplicate block, removed unused parameter. Done as a separate `/work` step before PR creation.
+**Rule:** Large feature PRs that touch multiple systems (JS logic, CSS animations, HTML structure) will accumulate dead code from mid-implementation pivots. Always run `/review` before creating the PR, not after. Clean up findings in a dedicated pass.
+
 ### [2026-02-01] UI: Review catches display-layer bugs that code tracing misses
 **Problem:** Three UX issues shipped in the Tier 3 PR that passed code-level review (no logic bugs, correct balance math, proper phase guards) but were caught as display inconsistencies: (1) no message when insurance is silently skipped due to insufficient funds, (2) the bet display included the `insuranceBet` amount after the insurance phase ended (stale state in the display), (3) the insurance button said "Insurance" even during the even-money variant where the message said "Even money?".
 **Solution:** (1) Added `messageEl.textContent = "Can't afford insurance."` in the fall-through path. (2) Changed bet display to only include `insuranceBet` during the `'insurance'` phase: `mainBet + (gamePhase === 'insurance' ? insuranceBet : 0)`. (3) Added `id="insurance-btn"` to the button and set `insuranceBtn.textContent` dynamically based on `playerBJ` when entering the insurance phase.
