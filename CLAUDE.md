@@ -67,6 +67,8 @@ The cycle ensures: nothing is built without a plan, nothing ships without review
 - **Dealer blackjack checked at deal time** — dealInitialCards() checks both player and dealer for naturals before entering 'playing' phase
 - **saveState() after resolution only** — called in resolveRound(), surrender(), and zero-balance reset, never mid-round
 - **Input handlers route through action functions** — keyboard shortcuts call hit(), stand(), etc. directly — never duplicate game logic in handlers
+- **Two visibility systems** — `.hidden` (display:none) for instant toggle on non-phase elements. `setPhaseVisibility()` (opacity/max-height transitions) for the 4 phase control groups only. Never mix them on the same element.
+- **Animation tracking resets with game state** — `lastRenderedDealerCount`, `lastRenderedHandCounts`, `prevHideHole`, `holeCardEl` must all reset in `newRound()`. `lastRenderedHandCounts` must also update in `split()`.
 
 ## Game Rules
 
@@ -92,6 +94,13 @@ The cycle ensures: nothing is built without a plan, nothing ships without review
 - **Insurance** — When dealer shows Ace, `'insurance'` game phase offers side bet at half the wager. Even money variant when player has blackjack. Insurance payout resolved in `resolveRound()` after hand resolutions. `insuranceBet` state variable, `takeInsurance()`/`declineInsurance()` functions, `checkBlackjacksAndContinue()` extracted from deal flow.
 - **Surrender** — Surrender button shown on first two cards (not after split). `surrender()` self-resolves: returns half bet, updates stats, calls `saveState()`, goes to roundOver. Bypasses `resolveRound()` entirely.
 - **Multi-deck shoe** — `NUM_DECKS = 6` constant, `createDeck()` loops N times, `RESHUFFLE_THRESHOLD = 15 * NUM_DECKS`.
+- **Card animations** — CSS `@keyframes card-deal-in` with `--deal-index` stagger. `lastRenderedDealerCount` and `lastRenderedHandCounts[]` track which cards are already visible to avoid re-animating. `.no-animate` class suppresses animation on existing cards. Reset in `newRound()`, adjusted in `split()`.
+- **Dealer hole card flip** — Dual-face structure (`.card-flipper` > `.card-front` + `.card-back`) with 3D `rotateY` CSS transition. `holeCardEl` preserves the DOM element across renders. `prevHideHole` detects the hide→reveal transition. `.flipping` class triggers the animation.
+- **Score popups** — `<span class="score-popup">+N</span>` appended to new face-up cards only. CSS `@keyframes score-float` fades up and out.
+- **Round effects** — `showRoundEffect()` called from `resolveRound()` after render. Blackjack→confetti (30 pieces, auto-cleanup 2.5s), win→gold glow, bust→shake. Push has no effect.
+- **Visual chip stack** — `#bet-stack` with `renderBetStack()` decomposes `currentBet` into $100/$50/$25/$10 denominations. Color-coded chips stack with negative margin overlap. Visible only during betting phase.
+- **Phase transitions** — `setPhaseVisibility()` replaces `.hidden` toggles for betting/insurance/action/deal-again groups. Uses opacity + max-height CSS transitions. `.hidden` kept for non-phase elements (stats, conditional buttons).
+- **Mobile responsive** — Three breakpoints: 600px (cards 60×85, 44px touch targets), 420px (cards 52×74, 2-column action grid), 360px (cards 46×66, reduced title/logo).
 
 ## Deeper Context
 
