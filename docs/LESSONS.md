@@ -9,6 +9,16 @@
 
 ---
 
+### [2026-02-01] UI: Decorative elements that participate in document flow cause cascading layout problems
+**Problem:** The visual chip stack (`#bet-stack`) was in normal document flow between the info bar and card areas. Three problems cascaded: (1) adding chips pushed betting controls downward, forcing users to chase buttons with their mouse, (2) absolute-positioning it over the card area covered the "You" label, (3) reducing to a 20px fixed-height zone still let chips overflow upward into the info bar. Each fix created a new problem because the root cause — insufficient vertical space — was not addressed.
+**Solution:** Two-part fix: (1) compact the header by inlining logo + title side-by-side (reclaims ~100px), (2) give the bet stack a proper 50px fixed-height zone with `overflow: visible` and `#bet-stack:empty { height: 0 }` to collapse when unused. Chips stack upward into the freed header margin space. Also added $500/$250 visual denominations so most bets render as 1-2 chips.
+**Rule:** When a decorative/visual element causes layout shift, don't just remove it from flow — ask whether there's enough space for it at all. If the answer is "only with tricks," reclaim space from elsewhere (like an oversized header) rather than layering CSS hacks. Address root causes, not symptoms.
+
+### [2026-02-01] Architecture: Visual-only denominations separate bet interaction from bet display
+**Problem:** Players bet with $10/$25/$50/$100 chip buttons, but the visual chip stack also used only those 4 denominations. A $500 bet rendered as 5 black $100 chips in a horizontal row — cluttered and contributing to layout overflow.
+**Solution:** Added $500 (purple) and $250 (orange) to the visual denomination list in `renderBetStack()` without changing the betting UI. The existing `canRepresent()` algorithm handles arbitrary denominations with zero logic changes — just expanded the array from `[100, 50, 25, 10]` to `[500, 250, 100, 50, 25, 10]`. $250 is not a multiple of $100, but `canRepresent()` already handles non-multiple decompositions correctly.
+**Rule:** The bet interaction denominations (what buttons exist) and the bet display denominations (what chips are shown) don't need to match. Visual denominations can be richer to reduce clutter. When extending denomination lists, verify representability of all amounts — the `canRepresent()` recursive check handles non-multiple relationships automatically.
+
 ### [2026-02-01] Workflow: Parallel PRs that both run /compound will conflict on docs files
 **Problem:** PRs #5 and #6 were created from the same base (master) in one session. Both ran `/compound`, adding entries to the top of LESSONS.md and ARCHITECTURE.md. When #5 merged first, #6 had merge conflicts because both inserted at the same location. Required manual `git rebase` with conflict resolution before #6 could merge.
 **Solution:** Rebased #6 onto updated master, resolved conflicts by keeping both sets of entries (newest first), force-pushed, then merged. Worked but was manual and error-prone.

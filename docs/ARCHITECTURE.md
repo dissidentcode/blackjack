@@ -10,6 +10,12 @@
 
 ---
 
+### [2026-02-01] Decision: Fixed-height bet stack with compact header
+**Context:** The visual chip stack needed to be visible during all game phases without causing layout shift or overlapping other content. Three approaches were tried: (1) normal document flow caused layout shift, (2) absolute positioning over card area covered labels, (3) 20px fixed-height zone let chips overflow into the info bar.
+**Choice:** Two coordinated changes: compact the header (logo + title inline in flex row, logo reduced from 15vh to clamp(40-60px), title from 3-5rem to 2-3rem) to reclaim ~100px of vertical space, then give `#bet-stack` a 50px fixed-height zone with `overflow: visible`. Chips stack upward into the freed margin space. `#bet-stack:empty { height: 0 }` collapses the zone when no bet is placed. `renderBetStack()` shows chips during all phases using `handBets.reduce()` during play and `currentBet` during betting.
+**Alternatives considered:** (1) Absolute position over card area — rejected after discovering it covered "You" label and required a wrapper div. (2) Sidebar/left positioning — rejected because wide hands (many low cards) would collide. (3) Integrating chips into the info bar — rejected as too tight horizontally.
+**Outcome:** Clean layout at all bet sizes. Single-chip bets fit within the 50px zone. Multi-chip stacks (rare with $500/$250 denoms) overflow upward harmlessly. The compact header still looks like a casino game — inline logo+title is a common pattern. Three mobile breakpoints updated to match.
+
 ### [2026-02-01] Decision: Representability-checked chip decomposition
 **Context:** The visual chip stack decomposes `currentBet` into colored chip elements. The greedy approach (largest-first) broke because $25 is not a multiple of $10, producing incorrect visual totals for amounts like $30, $40, $65, $80.
 **Choice:** Recursive `canRepresent(amount, denoms)` function checks if an amount can be exactly built from a list of denominations. `renderBetStack()` iterates denominations largest-first but reduces each count until `canRepresent` confirms the remainder is buildable. Precomputed `smallerDenoms` array avoids repeated `.slice()`. Function is scoped inside `renderBetStack()` to keep it co-located with the denomination list.

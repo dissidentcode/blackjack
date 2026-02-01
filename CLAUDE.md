@@ -108,7 +108,7 @@ The cycle ensures: nothing is built without a plan, nothing ships without review
 - **Dealer hole card flip** — Dual-face structure (`.card-flipper` > `.card-front` + `.card-back`) with 3D `rotateY` CSS transition. `holeCardEl` preserves the DOM element across renders. `prevHideHole` detects the hide→reveal transition. `.flipping` class triggers the animation.
 - **Score popups** — `<span class="score-popup">+N</span>` appended to new face-up cards only. CSS `@keyframes score-float` fades up and out.
 - **Round effects** — `showRoundEffect()` called from `resolveRound()` after render. Blackjack→confetti (30 pieces, auto-cleanup 2.5s), win→gold glow, bust→shake. Push has no effect.
-- **Visual chip stack** — `#bet-stack` with `renderBetStack()` decomposes `currentBet` into $100/$50/$25/$10 denominations. Color-coded chips stack with negative margin overlap. Visible only during betting phase.
+- **Visual chip stack** — `#bet-stack` with `renderBetStack()` decomposes the active bet into $500/$250/$100/$50/$25/$10 visual denominations. Color-coded chips stack with negative margin overlap in a fixed-height (50px) zone between the info bar and dealer area. Visible during all phases (uses `currentBet` during betting, `handBets` sum during play/resolution). Clears when `newRound()` resets state.
 - **Phase transitions** — `setPhaseVisibility()` replaces `.hidden` toggles for betting/insurance/action/deal-again groups. Uses opacity + max-height CSS transitions. `.hidden` kept for non-phase elements (stats, conditional buttons).
 - **Mobile responsive** — Three breakpoints: 600px (cards 60×85, 44px touch targets), 420px (cards 52×74, 2-column action grid), 360px (cards 46×66, reduced title/logo).
 

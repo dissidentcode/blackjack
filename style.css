@@ -29,19 +29,24 @@ body {
     padding: 0 1rem;
 }
 
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 0.3rem;
+}
+
 .logo {
-    margin: 0 auto;
-    padding: 1vh 0;
-    display: block;
-    height: 15vh;
+    height: clamp(40px, 8vh, 60px);
 }
 
 h1 {
     color: goldenrod;
-    line-height: clamp(2.5rem, 1rem + 4vw, 4rem);
-    margin: 0 0 0.5rem 0;
+    line-height: 1;
+    margin: 0;
     font-weight: 700;
-    font-size: clamp(3rem, 2rem + 6vw, 5rem);
+    font-size: clamp(2rem, 1.5rem + 3vw, 3rem);
 }
 
 p {
@@ -498,18 +503,18 @@ p {
     animation: confetti-fall 2s ease-in forwards;
 }
 
-/* Chip stack */
+/* Chip stack — fixed-height zone, chips stack upward without shifting layout */
 #bet-stack {
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    min-height: 0;
-    margin: 0.3rem 0;
-    transition: min-height 0.2s;
+    height: 50px;
+    overflow: visible;
+    pointer-events: none;
 }
 
 #bet-stack:empty {
-    min-height: 0;
+    height: 0;
 }
 
 .visual-chip {
@@ -554,6 +559,8 @@ p {
 .chip-25 { background: #1a8c3a; }
 .chip-50 { background: #c42020; }
 .chip-100 { background: #1a1a1a; border-color: goldenrod; color: goldenrod; }
+.chip-250 { background: #c4561a; }
+.chip-500 { background: #7b2d8e; }
 
 /* Phase transitions */
 .phase-group {
@@ -717,11 +724,11 @@ p {
     }
 
     h1 {
-        font-size: clamp(2rem, 1.5rem + 4vw, 3rem);
+        font-size: clamp(1.6rem, 1.2rem + 3vw, 2rem);
     }
 
     .logo {
-        height: 10vh;
+        height: 36px;
     }
 
     .wrapper {
