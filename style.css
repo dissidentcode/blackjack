@@ -1,3 +1,12 @@
+/* Animation timing custom properties */
+:root {
+    --deal-duration: 0.3s;
+    --deal-stagger: 0.1s;
+    --flip-duration: 0.5s;
+    --effect-duration: 0.8s;
+    --transition-duration: 0.25s;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -108,17 +117,6 @@ p {
     align-items: center;
     justify-content: center;
     font-family: "Playfair Display", serif;
-}
-
-.card.face-down {
-    background: repeating-linear-gradient(
-        45deg,
-        #1a5c2a,
-        #1a5c2a 5px,
-        #1e6b31 5px,
-        #1e6b31 10px
-    );
-    border: 2px solid goldenrod;
 }
 
 .card.red {
@@ -338,6 +336,387 @@ p {
 
 .score-badge.busted {
     color: #ff6b6b;
+}
+
+/* Card deal animation */
+@keyframes card-deal-in {
+    from {
+        opacity: 0;
+        transform: translate(80px, -60px) scale(0.7) rotate(8deg);
+    }
+    to {
+        opacity: 1;
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+}
+
+.card-row > .card,
+.card-flipper-container {
+    animation: card-deal-in var(--deal-duration) ease-out backwards;
+    animation-delay: calc(var(--deal-index, 0) * var(--deal-stagger));
+}
+
+.card-row > .card.no-animate,
+.card-flipper-container.no-animate {
+    animation: none;
+}
+
+/* Score popup */
+@keyframes score-float {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    70% {
+        opacity: 0.7;
+        transform: translateY(-18px);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-28px);
+    }
+}
+
+.score-popup {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: rgba(0, 0, 0, 0.7);
+    color: goldenrod;
+    font-weight: 700;
+    font-size: 0.7rem;
+    padding: 0.15em 0.4em;
+    border-radius: 0.6em;
+    pointer-events: none;
+    animation: score-float 0.8s ease-out forwards;
+    z-index: 10;
+}
+
+/* Card flip animation */
+.card-flipper-container {
+    width: 70px;
+    height: 100px;
+    perspective: 400px;
+}
+
+.card-flipper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform var(--flip-duration) ease-in-out;
+}
+
+.card-flipper.flipping {
+    transform: rotateY(180deg);
+}
+
+.card-flipper .card-front,
+.card-flipper .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 8px;
+}
+
+.card-flipper .card-front {
+    transform: rotateY(180deg);
+}
+
+.card-flipper .card-back {
+    background: repeating-linear-gradient(
+        45deg,
+        #1a5c2a,
+        #1a5c2a 5px,
+        #1e6b31 5px,
+        #1e6b31 10px
+    );
+    border: 2px solid goldenrod;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Win/loss effects */
+@keyframes win-flash {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0); }
+    50% { box-shadow: 0 0 25px 8px rgba(218, 165, 32, 0.6); }
+}
+
+.win-flash {
+    animation: win-flash var(--effect-duration) ease-in-out;
+}
+
+@keyframes bust-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+.bust-shake {
+    animation: bust-shake 0.4s ease-in-out;
+}
+
+/* Confetti */
+.confetti-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1000;
+}
+
+@keyframes confetti-fall {
+    0% {
+        opacity: 1;
+        transform: translateY(-10px) rotate(0deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(100vh) rotate(720deg);
+    }
+}
+
+.confetti-piece {
+    position: absolute;
+    top: -10px;
+    width: 8px;
+    height: 8px;
+    animation: confetti-fall 2s ease-in forwards;
+}
+
+/* Chip stack */
+#bet-stack {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    min-height: 0;
+    margin: 0.3rem 0;
+    transition: min-height 0.2s;
+}
+
+#bet-stack:empty {
+    min-height: 0;
+}
+
+.visual-chip {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 3px dashed rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Playfair Display", serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    animation: chip-drop 0.25s ease-out backwards;
+}
+
+.chip-stack-column {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    margin: 0 0.15rem;
+}
+
+.chip-stack-column .visual-chip + .visual-chip {
+    margin-bottom: -28px;
+}
+
+@keyframes chip-drop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chip-10 { background: #1a6bc4; }
+.chip-25 { background: #1a8c3a; }
+.chip-50 { background: #c42020; }
+.chip-100 { background: #1a1a1a; border-color: goldenrod; color: goldenrod; }
+
+/* Phase transitions */
+.phase-group {
+    transition: opacity var(--transition-duration) ease, max-height var(--transition-duration) ease;
+    overflow: hidden;
+}
+
+.phase-hidden {
+    opacity: 0;
+    max-height: 0 !important;
+    pointer-events: none;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.phase-visible {
+    opacity: 1;
+    max-height: 500px;
+    pointer-events: auto;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .card {
+        width: 60px;
+        height: 85px;
+    }
+
+    .card-flipper-container {
+        width: 60px;
+        height: 85px;
+    }
+
+    .card-center {
+        font-size: 1.5rem;
+    }
+
+    .chip {
+        width: 48px;
+        height: 48px;
+        font-size: 0.75rem;
+    }
+
+    .action-btn {
+        padding: 0.6em 1.2em;
+        font-size: 1.05rem;
+        min-height: 44px;
+    }
+
+    .stats-toggle {
+        min-height: 44px;
+        padding: 0.4em 1em;
+    }
+
+    .visual-chip {
+        width: 38px;
+        height: 38px;
+        font-size: 0.6rem;
+    }
+
+    .chip-stack-column .visual-chip + .visual-chip {
+        margin-bottom: -24px;
+    }
+}
+
+@media (max-width: 420px) {
+    .card {
+        width: 52px;
+        height: 74px;
+    }
+
+    .card-flipper-container {
+        width: 52px;
+        height: 74px;
+    }
+
+    .card-center {
+        font-size: 1.3rem;
+    }
+
+    .card-corner .card-rank {
+        font-size: 0.75rem;
+    }
+
+    .card-corner .card-suit {
+        font-size: 0.6rem;
+    }
+
+    .card-row {
+        gap: 0.3rem;
+        min-height: 78px;
+    }
+
+    .split-hand .card-row {
+        min-height: 78px;
+    }
+
+    .action-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        max-width: 300px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .bet-actions {
+        flex-wrap: wrap;
+    }
+
+    .split-hand {
+        display: block;
+        margin: 0.4rem 0;
+    }
+
+    .chip {
+        width: 44px;
+        height: 44px;
+        font-size: 0.7rem;
+    }
+
+    .chip-row {
+        gap: 0.4rem;
+    }
+
+    .info-bar {
+        gap: 1rem;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .card {
+        width: 46px;
+        height: 66px;
+    }
+
+    .card-flipper-container {
+        width: 46px;
+        height: 66px;
+    }
+
+    .card-center {
+        font-size: 1.1rem;
+    }
+
+    .card-corner .card-rank {
+        font-size: 0.65rem;
+    }
+
+    .card-corner .card-suit {
+        font-size: 0.5rem;
+    }
+
+    .card-row {
+        gap: 0.2rem;
+        min-height: 70px;
+    }
+
+    h1 {
+        font-size: clamp(2rem, 1.5rem + 4vw, 3rem);
+    }
+
+    .logo {
+        height: 10vh;
+    }
+
+    .wrapper {
+        margin: 1vh auto;
+    }
 }
 
 /* Utility */
