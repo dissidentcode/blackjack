@@ -9,6 +9,11 @@
 
 ---
 
+### [2026-02-01] Workflow: Parallel PRs that both run /compound will conflict on docs files
+**Problem:** PRs #5 and #6 were created from the same base (master) in one session. Both ran `/compound`, adding entries to the top of LESSONS.md and ARCHITECTURE.md. When #5 merged first, #6 had merge conflicts because both inserted at the same location. Required manual `git rebase` with conflict resolution before #6 could merge.
+**Solution:** Rebased #6 onto updated master, resolved conflicts by keeping both sets of entries (newest first), force-pushed, then merged. Worked but was manual and error-prone.
+**Rule:** When creating multiple PRs in one session, either: (1) stack branches sequentially (each based on the previous) so later PRs include earlier changes, or (2) run `/compound` only on the LAST PR and keep earlier PRs focused on code changes only. The append-only "newest at top" pattern in LESSONS.md and ARCHITECTURE.md will always conflict when two branches insert at the same point.
+
 ### [2026-02-01] Bug: Greedy chip decomposition fails when denominations aren't multiples of each other
 **Problem:** `renderBetStack()` used a greedy largest-first decomposition with `[100, 50, 25, 10]`. Since $25 is not a multiple of $10, amounts like $30 produced `Math.floor(30/25) = 1` leaving remainder $5 — below the minimum denomination. The visual chip stack showed $25 instead of $30. First fix only patched the $25 case, but $50 had the same issue for $65 (`Math.floor(65/50) = 1`, remainder $15, not representable). The bug class was broader than initially diagnosed.
 **Solution:** Added `canRepresent(amount, denoms)` recursive function that checks if an amount can be exactly built from a set of denominations. Each denomination's count is reduced via `while` loop until the remainder passes `canRepresent`. Precomputed `smallerDenoms` array avoids `.slice()` allocations in the loop. Function scoped inside `renderBetStack()` to keep coupling explicit.

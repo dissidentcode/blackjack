@@ -62,6 +62,7 @@ The cycle ensures: nothing is built without a plan, nothing ships without review
 - **`/work` updates plans on completion.** When a task is done, `/work` checks off the item in the plan file AND the roadmap. This is mandatory — not optional.
 - **`/compound` verifies plan freshness.** Catches any drift between plan files and actual state.
 - **Context can be cleared after any slash command.** All progress is recoverable from plan files + git history.
+- **Stack branches when creating multiple PRs.** Each branch should be based on the previous one, not all from master. This prevents merge conflicts in docs files (LESSONS.md, ARCHITECTURE.md) where entries are always inserted at the same location. Run `/compound` on the last PR only, or accept that parallel branches will need rebase conflict resolution.
 
 ## Critical Rules
 
