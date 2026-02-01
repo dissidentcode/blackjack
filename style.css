@@ -243,9 +243,17 @@ p {
 /* Action row */
 .action-row {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.action-row-primary,
+.action-row-secondary {
+    display: flex;
     justify-content: center;
     gap: 0.8rem;
-    margin: 1rem 0;
 }
 
 /* Deal again */
@@ -645,12 +653,14 @@ p {
     }
 
     .action-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
         max-width: 300px;
         margin-left: auto;
         margin-right: auto;
+    }
+
+    .action-row-primary,
+    .action-row-secondary {
+        flex-wrap: wrap;
     }
 
     .bet-actions {

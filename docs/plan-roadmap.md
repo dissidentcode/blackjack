@@ -1,10 +1,11 @@
 # Blackjack Roadmap
 
-Prioritized improvements organized by value and effort. Use `/work` to pick up items.
+Prioritized improvements organized by value and effort. This is the persistent plan of record — it survives context clears and session boundaries. All slash commands update this file as work is completed.
 
 ## Status Key
 - [x] Completed
 - [ ] Not started
+- [~] In progress
 
 ---
 
@@ -19,30 +20,28 @@ Prioritized improvements organized by value and effort. Use `/work` to pick up i
 - [x] Stats dashboard (hands, wins, losses, pushes, blackjacks, win rate, biggest win)
 - [x] Reset button for stats and balance
 
----
-
 ## Tier 3: Core Blackjack Features — COMPLETED
-
-- [x] **Split pairs** — When dealt two cards of the same rank, split into two independent hands. Each gets its own bet and plays separately. Biggest missing feature. Requires hand-array refactor.
-- [x] **Insurance** — When dealer shows an Ace, offer insurance (side bet at 2:1) before checking for dealer blackjack. Even money when player has BJ. Standard casino rule.
-- [x] **Surrender** — Option to forfeit half the bet and fold before playing. Late surrender (after dealer checks for blackjack).
+- [x] **Split pairs** — When dealt two cards of the same rank, split into two independent hands. Each gets its own bet and plays separately.
+- [x] **Insurance** — When dealer shows an Ace, offer insurance (side bet at 2:1) before checking for dealer blackjack. Even money when player has BJ.
+- [x] **Surrender** — Option to forfeit half the bet and fold before playing. Late surrender.
 - [x] **Multi-deck shoe** — 6-deck shoe (312 cards), reshuffle threshold scales proportionally.
 
-## Tier 4: Player Experience (Medium-High Value)
+## Tier 5: Visual Polish — COMPLETED
+- [x] **Card deal animation** — CSS `@keyframes card-deal-in` with `--deal-index` stagger.
+- [x] **Card flip animation** — Dealer hole card flips with 3D `rotateY` CSS transform.
+- [x] **Win/loss effects** — Confetti on blackjack, gold glow on win, shake on bust.
+- [x] **Chip stacking** — Visual `#bet-stack` with color-coded denominations.
+- [x] **Score change indicators** — `score-popup` float animation on new cards.
+- [x] **Mobile-optimized layout** — Three breakpoints (600px, 420px, 360px).
+- [x] **Smooth phase transitions** — `setPhaseVisibility()` with opacity/max-height transitions.
+
+---
+
+## Tier 4: Player Experience (Medium-High Value) — NEXT UP
 
 - [ ] **Sound effects** — Card deal, chip click, win jingle, bust thud. Toggle on/off. Use Web Audio API, no external files needed.
 - [ ] **Game history** — Show last 10 rounds with outcome and balance change. Small collapsible panel.
 - [ ] **Help overlay** — In-game rules reference and basic strategy chart.
-
-## Tier 5: Visual Polish (Medium Value)
-
-- [ ] **Card deal animation** — Cards slide in from a deck position. CSS transitions.
-- [ ] **Card flip animation** — Dealer hole card flips with 3D CSS transform when revealed.
-- [ ] **Win/loss effects** — Gold flash on win, red shake on bust, confetti on blackjack. Subtle.
-- [ ] **Chip stacking** — Visual betting zone where chips stack as you add them.
-- [ ] **Score change indicators** — "+10" popup that fades when a card is dealt.
-- [ ] **Mobile-optimized layout** — Larger touch targets, responsive card sizing.
-- [ ] **Smooth phase transitions** — Fade/slide between betting, playing, and round-over states.
 
 ## Tier 6: Accessibility (High Importance)
 
@@ -69,9 +68,6 @@ Prioritized improvements organized by value and effort. Use `/work` to pick up i
 
 ---
 
-## Recommended Order
+## Active Feature Plans
 
-1. **Split** — biggest missing feature, most complex (hand-array refactor)
-2. **Visual polish** — card animations, win effects, mobile layout
-3. **Accessibility** — ARIA, keyboard nav, contrast (do alongside UI changes)
-4. **Sound** — last because optional and some users find it annoying
+Feature-specific plans are stored as `docs/plan-<feature>.md`. When a feature plan is fully completed, its items should be checked off here in the roadmap and the feature plan file can be deleted or kept as historical reference.

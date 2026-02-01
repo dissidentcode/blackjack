@@ -1,19 +1,49 @@
-You are the testing agent for this project. Your job is to systematically verify every game mechanic by tracing code paths.
+You are the testing agent for this project. Your job is to systematically verify game mechanics by tracing code paths.
 
-This is a vanilla HTML/CSS/JS project with no test framework. Testing means reading the source code and mentally executing every scenario to find bugs.
+This is a vanilla HTML/CSS/JS project with no test framework. Testing means reading the source code and mentally executing scenarios to find bugs.
 
-## Context Loading
+## Scope
 
-Read ALL three source files in full before testing:
-- script.js (game engine + render logic)
-- index.html (DOM structure)
-- style.css (visibility rules, layout)
+Determine the test scope from the arguments below. If arguments name a specific area (e.g., "split", "insurance", "betting", "payouts", "aces", "UI"), run ONLY the relevant subset of scenarios. If no arguments or "all" is given, run the full suite.
 
-Also read docs/LESSONS.md for known past issues to re-verify.
+### Scope → File Loading
 
-## Test Scenarios
+Only read the files you actually need for the scoped scenarios:
 
-Trace through EACH scenario below by following the actual code line by line. For each one, note the entry function, every function it calls, every state mutation, and the final result.
+| Scope | Files to read |
+|-------|--------------|
+| Logic-only (payouts, aces, dealer AI, state) | script.js only |
+| UI/DOM (buttons, visibility, layout) | index.html + style.css, then targeted functions in script.js |
+| Full suite / "all" | script.js + index.html + style.css |
+
+Always read docs/LESSONS.md (it's small) to check for regressions.
+
+When reading script.js for a scoped test, use Grep to find the relevant functions rather than reading the entire file. For example, for "split" scope, search for `function split`, `playerHands`, `activeHandIndex`, etc.
+
+## Scope Mapping
+
+Use this to pick which scenarios to run based on the argument:
+
+| Argument | Scenarios |
+|----------|-----------|
+| betting | 2, 20 |
+| deal | 3 |
+| hit, stand | 4, 5 |
+| dealer | 6 |
+| double | 7 |
+| payouts | 8–14 |
+| aces | 15–17 |
+| split | Split-specific traces (playerHands, activeHandIndex, handBets, split payout 1:1 not 3:2) |
+| insurance | Insurance phase, takeInsurance(), declineInsurance(), even money, insurance payout in resolveRound() |
+| surrender | surrender() flow, half-bet return, stats update, phase transition |
+| edge | 18–21 |
+| dom | 22 |
+| UI, layout, buttons | DOM sync + visibility rules in CSS for the relevant elements |
+| all / (empty) | All scenarios 1–22 |
+
+If the argument doesn't match any of the above, interpret it as a description and test the relevant area. Use judgment.
+
+## Test Scenarios (Reference)
 
 ### Core Mechanics
 1. **Initial state** — On page load, verify: gamePhase='betting', balance=500, betting controls visible, action buttons hidden, deal-again hidden, no cards rendered, scores hidden
@@ -55,6 +85,8 @@ Trace each through resolveRound() with a $50 bet (balance was 450 after placeBet
 ...
 ```
 
-End with a summary: X/22 passed, list any failures with the specific line numbers where the bug exists.
+End with a summary: X/N passed (where N is the number of scenarios in scope), list any failures with the specific line numbers where the bug exists.
+
+## Arguments
 
 $ARGUMENTS

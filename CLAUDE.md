@@ -26,6 +26,8 @@ blackjack/
 │       ├── test.md         # /test — testing agent
 │       └── compound.md     # /compound — learning agent
 └── docs/
+    ├── plan-roadmap.md     # Master roadmap — persistent plan of record
+    ├── plan-*.md           # Feature-specific plans (created by /plan)
     ├── LESSONS.md          # Compounded learnings (problems & solutions)
     └── ARCHITECTURE.md     # Technical decisions & patterns
 ```
@@ -44,7 +46,7 @@ Picks up the next task from the plan, marks it in-progress, reads all files befo
 Reads project rules and LESSONS.md, gathers all recent changes (git diff), and reviews against a structured checklist: logic bugs, state corruption, DOM mismatches, balance math, lessons violations, edge cases. Reports findings by severity (critical/warning/suggestion).
 
 ### `/test` — Testing Agent
-Reads all three source files and systematically traces through 22 test scenarios covering: initial state, betting, dealing, hit/stand/double, all payout outcomes, ace handling, and edge cases. Reports a PASS/FAIL table with line-number references for any failures.
+Scope-aware: accepts arguments like `/test split`, `/test payouts`, `/test dom` to test specific areas. Only reads files relevant to the scope. Without arguments, runs the full 22-scenario suite. Reports a PASS/FAIL table with line-number references for any failures.
 
 ### `/compound` — Learning Agent
 The most important step. Gathers everything that happened (git log, diffs, tasks, conversation), identifies problems/solutions, technical decisions, and new rules, then permanently encodes them into docs/LESSONS.md, docs/ARCHITECTURE.md, and CLAUDE.md. Without this step, every session starts from zero.
@@ -53,6 +55,13 @@ The most important step. Gathers everything that happened (git log, diffs, tasks
 **plan → work → review → test → compound**
 
 The cycle ensures: nothing is built without a plan, nothing ships without review, nothing is assumed correct without testing, and nothing is learned without compounding. The docs/ directory is the project's memory — it accumulates knowledge across sessions so the same mistakes aren't repeated and the same decisions aren't re-debated.
+
+### Plan Persistence Rules
+- **Plans live in files, not in context.** `docs/plan-roadmap.md` is the master roadmap. Feature plans use `docs/plan-<feature>.md`. TaskList is session-scoped and does not survive context clears.
+- **Never overwrite a plan file.** `/plan` reads existing plans and updates in place. New features get new files.
+- **`/work` updates plans on completion.** When a task is done, `/work` checks off the item in the plan file AND the roadmap. This is mandatory — not optional.
+- **`/compound` verifies plan freshness.** Catches any drift between plan files and actual state.
+- **Context can be cleared after any slash command.** All progress is recoverable from plan files + git history.
 
 ## Critical Rules
 

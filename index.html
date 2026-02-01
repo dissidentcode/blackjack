@@ -60,11 +60,15 @@
 
         <!-- Playing controls -->
         <div id="action-row" class="action-row hidden">
-            <button id="hit-btn" class="action-btn" onclick="hit()">Hit</button>
-            <button id="stand-btn" class="action-btn" onclick="stand()">Stand</button>
-            <button id="double-btn" class="action-btn secondary" onclick="doubleDown()">Double</button>
-            <button id="split-btn" class="action-btn secondary hidden" onclick="split()">Split</button>
-            <button id="surrender-btn" class="action-btn secondary hidden" onclick="surrender()">Surrender</button>
+            <div class="action-row-primary">
+                <button id="hit-btn" class="action-btn" onclick="hit()">Hit</button>
+                <button id="stand-btn" class="action-btn" onclick="stand()">Stand</button>
+            </div>
+            <div class="action-row-secondary">
+                <button id="double-btn" class="action-btn secondary" onclick="doubleDown()">Double</button>
+                <button id="split-btn" class="action-btn secondary hidden" onclick="split()">Split</button>
+                <button id="surrender-btn" class="action-btn secondary hidden" onclick="surrender()">Surrender</button>
+            </div>
         </div>
 
         <!-- Round over -->
