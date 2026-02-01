@@ -147,7 +147,7 @@ function stand() {
 function doubleDown() {
     if (gamePhase !== 'playing') return;
     if (playerHand.length !== 2) return;
-    if (currentBet > balance - currentBet) return;
+    if (currentBet > balance) return;
 
     balance -= currentBet;
     currentBet *= 2;
