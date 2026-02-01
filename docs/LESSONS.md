@@ -9,6 +9,11 @@
 
 ---
 
+### [2026-02-01] Bug: Greedy chip decomposition fails when denominations aren't multiples of each other
+**Problem:** `renderBetStack()` used a greedy largest-first decomposition with `[100, 50, 25, 10]`. Since $25 is not a multiple of $10, amounts like $30 produced `Math.floor(30/25) = 1` leaving remainder $5 — below the minimum denomination. The visual chip stack showed $25 instead of $30. First fix only patched the $25 case, but $50 had the same issue for $65 (`Math.floor(65/50) = 1`, remainder $15, not representable). The bug class was broader than initially diagnosed.
+**Solution:** Added `canRepresent(amount, denoms)` recursive function that checks if an amount can be exactly built from a set of denominations. Each denomination's count is reduced via `while` loop until the remainder passes `canRepresent`. Precomputed `smallerDenoms` array avoids `.slice()` allocations in the loop. Function scoped inside `renderBetStack()` to keep coupling explicit.
+**Rule:** When decomposing a value into denominations where the denominations aren't all multiples of each other, greedy doesn't work. Use representability checking. When fixing a decomposition bug, test ALL denominations — the first fix that only patches one denomination will miss the same pattern in others.
+
 ### [2026-02-01] Workflow: Plan files go stale when TaskList is the only progress tracker
 **Problem:** Tier 5 (7 items) was fully implemented, reviewed, and merged in a previous session. But `docs/plan-roadmap.md` still showed all 7 items unchecked because `/work` only updated TaskList (session-scoped), not the plan files. After context clear, `/work` found an empty TaskList and couldn't determine where to pick up. The roadmap was the only persistent record, and it was wrong.
 **Solution:** Systemic fix across all slash commands: `/work` now updates plan file checkboxes AND TaskList on completion. `/compound` verifies plan files match reality. `/plan` reads existing plans before creating new ones and never overwrites. CLAUDE.md documents the invariant: "Plans live in files, not in context."

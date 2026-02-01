@@ -10,6 +10,12 @@
 
 ---
 
+### [2026-02-01] Decision: Representability-checked chip decomposition
+**Context:** The visual chip stack decomposes `currentBet` into colored chip elements. The greedy approach (largest-first) broke because $25 is not a multiple of $10, producing incorrect visual totals for amounts like $30, $40, $65, $80.
+**Choice:** Recursive `canRepresent(amount, denoms)` function checks if an amount can be exactly built from a list of denominations. `renderBetStack()` iterates denominations largest-first but reduces each count until `canRepresent` confirms the remainder is buildable. Precomputed `smallerDenoms` array avoids repeated `.slice()`. Function is scoped inside `renderBetStack()` to keep it co-located with the denomination list.
+**Alternatives considered:** (1) Remove $25 from visual denominations entirely (use only [100, 50, 10]) — rejected because $75 looks better as 1x$50+1x$25 than 1x$50+2x$10+1x$5 (and $5 doesn't exist). (2) Special-case only the $25 denomination — rejected after discovering $50 has the same bug pattern for $65. The generic solution handles all cases. (3) Lookup table of known-good decompositions — rejected because it wouldn't scale to new denominations and is harder to verify.
+**Outcome:** All amounts from $10 to $500 render correctly. Performance is bounded (max 4 denominations, max $500, recursion depth 4). The fix was iterative — first attempt only patched $25, second attempt generalized to all denominations.
+
 ### [2026-02-01] Decision: Plan persistence in files, not session context
 **Context:** After implementing Tier 5 and clearing context, `/work` couldn't find its place — TaskList was empty and the roadmap was stale. The project had no reliable way to resume across sessions.
 **Choice:** `docs/plan-roadmap.md` is the master plan of record. Feature plans use `docs/plan-<feature>.md`. All slash commands read and update these files. `/work` checks off items on completion. `/compound` verifies freshness. `/plan` never overwrites — reads existing plans and updates in place. CLAUDE.md documents the invariant under "Plan Persistence Rules."
